@@ -456,7 +456,7 @@ tr.row.open { background: var(--pine-soft); }
     <div class="brand-row">
       <div class="brand">
         <h1>選股器</h1>
-        <p class="tag">以 0050、00919、00878、00403A、009828、0052 成份為宇宙。009828 只納入台股代碼。調整基本面與 ATR 參數，即時重算作多／作空進出場參考。</p>
+        <p class="tag">以 0050、00919、00878、00403A、00406A、009828、0052 成份為宇宙。009828、00406A 只納入台股代碼。調整基本面與 ATR 參數，即時重算作多／作空進出場參考。</p>
       </div>
       <div class="brand-actions">
         <div class="meta-chip">資料日 <strong id="asOf">—</strong></div>
@@ -486,6 +486,7 @@ tr.row.open { background: var(--pine-soft); }
           <option value="00919">僅 00919</option>
           <option value="00878">僅 00878</option>
           <option value="00403A">僅 00403A</option>
+          <option value="00406A">僅 00406A</option>
           <option value="009828">僅 009828</option>
           <option value="0052">僅 0052</option>
           <option value="all">全部（含自選）</option>
@@ -745,7 +746,7 @@ window.__SCREENER__ = __SCREENER_PAYLOAD__;
     return "低權重";
   }
 
-  const ETF_ORDER = ["0050", "00919", "00878", "00403A", "009828", "0052"];
+  const ETF_ORDER = ["0050", "00919", "00878", "00403A", "00406A", "009828", "0052"];
 
   function rowWeights(row) {
     const w = {};

@@ -36,7 +36,7 @@ FUBON_ASSETS = "https://websys.fsit.com.tw/FubonETF/Trade/Assets.aspx"
 CTBC_API = "https://www.ctbcinvestments.com.tw/API/"
 
 # Default constituent universe. "both" / "all" / "custom" load every code here.
-CONSTITUENT_ETFS = ("0050", "00919", "00878", "00403A", "009828", "0052")
+CONSTITUENT_ETFS = ("0050", "00919", "00878", "00403A", "00406A", "009828", "0052")
 
 TICKER_RE = re.compile(r"^\d{4}$")
 ASP_DATE_RE = re.compile(r"/Date\((-?\d+)\)/")
@@ -369,8 +369,9 @@ def fetch_00403A_holdings(timeout: float = 30.0) -> pd.DataFrame:
     return df
 
 
-def fetch_009828_holdings(timeout: float = 30.0) -> pd.DataFrame:
-    """CTBC holdings. Overseas names are skipped; OTC names are priced via .TWO."""
+def fetch_ctbc_holdings(etf_id: str, timeout: float = 30.0) -> pd.DataFrame:
+    """CTBC holdings. Overseas names, futures, and options are skipped."""
+    etf_id = str(etf_id).strip()
     headers = {
         **_json_headers("https://www.ctbcinvestments.com.tw/"),
         "Content-Type": "application/json",
@@ -398,11 +399,11 @@ def fetch_009828_holdings(timeout: float = 30.0) -> pd.DataFrame:
     listing = _post("etf/ETFList", {"IsWithETF": "Y"})
     fid = None
     for row in listing.get("Data") or []:
-        if str(row.get("ETF_ID") or "").strip() == "009828":
+        if str(row.get("ETF_ID") or "").strip() == etf_id:
             fid = str(row.get("FID") or "").strip()
             break
     if not fid:
-        raise ValueError("CTBC ETF list has no 009828")
+        raise ValueError(f"CTBC ETF list has no {etf_id}")
 
     stocks: list[dict[str, Any]] = []
     as_of = None
@@ -423,7 +424,7 @@ def fetch_009828_holdings(timeout: float = 30.0) -> pd.DataFrame:
         stocks = found
         break
     if not stocks:
-        raise ValueError("CTBC 009828 holdings were empty")
+        raise ValueError(f"CTBC {etf_id} holdings were empty")
 
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -448,16 +449,26 @@ def fetch_009828_holdings(timeout: float = 30.0) -> pd.DataFrame:
             }
         )
     if skipped:
-        print(f"009828: skipped {skipped} non-Taiwan holdings (no .TW price)")
+        print(f"{etf_id}: skipped {skipped} non-equity holdings (no .TW price)")
     if not rows:
-        raise ValueError("CTBC 009828 contained no Taiwan 4-digit holdings")
+        raise ValueError(f"CTBC {etf_id} contained no Taiwan 4-digit holdings")
     source = "ctbc_etf_holding_weight"
-    _write_cache("009828", rows, as_of, source)
+    _write_cache(etf_id, rows, as_of, source)
     df = pd.DataFrame(rows)
-    df["etf"] = "009828"
+    df["etf"] = etf_id
     df["as_of"] = as_of
     df["source"] = source
     return df
+
+
+def fetch_009828_holdings(timeout: float = 30.0) -> pd.DataFrame:
+    """CTBC 009828. Overseas names are skipped; OTC names are priced via .TWO."""
+    return fetch_ctbc_holdings("009828", timeout)
+
+
+def fetch_00406A_holdings(timeout: float = 30.0) -> pd.DataFrame:
+    """CTBC 00406A active ETF. Futures, options, and cash are skipped."""
+    return fetch_ctbc_holdings("00406A", timeout)
 
 
 def fetch_0052_holdings(timeout: float = 30.0) -> pd.DataFrame:
@@ -521,6 +532,7 @@ def load_holdings(etf: str, use_cache: bool = False, timeout: float = 30.0) -> p
         "00919": fetch_00919_holdings,
         "00878": fetch_00878_holdings,
         "00403A": fetch_00403A_holdings,
+        "00406A": fetch_00406A_holdings,
         "009828": fetch_009828_holdings,
         "0052": fetch_0052_holdings,
     }
