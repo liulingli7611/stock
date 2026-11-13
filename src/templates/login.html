@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>後台登入 · 選股器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #e9eee8;
+  --bg-2: #dfe6dd;
+  --panel: #f5f7f3;
+  --ink: #152019;
+  --muted: #5a6a5f;
+  --line: #c5d0c4;
+  --pine: #1a6b4f;
+  --pine-soft: rgba(26, 107, 79, 0.12);
+  --copper: #b85a2a;
+  --warn: #9a6b16;
+  --danger: #8c2f2f;
+  --radius: 16px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow: 0 18px 50px rgba(21, 32, 25, 0.10);
+  --font-display: "Fraunces", "Noto Sans TC", serif;
+  --font-ui: "IBM Plex Sans", "Noto Sans TC", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(26,107,79,0.12), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 10%, rgba(184,90,42,0.08), transparent 50%),
+    linear-gradient(160deg, var(--bg), var(--bg-2));
+  background-attachment: fixed;
+}
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 460px);
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  gap: 1.5rem;
+  align-items: center;
+}
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; padding: 1.25rem 1rem 2.5rem; }
+  .intro { order: -1; padding: 0.15rem 0.2rem 0; }
+  .intro p, .points { display: none; }
+  .intro h1 { font-size: 2rem; margin-bottom: 0.55rem; }
+}
+.intro { animation: rise 0.55s var(--ease) both; }
+.kicker {
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pine);
+  font-weight: 600;
+}
+.intro h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 5vw, 3.3rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  margin: 0.45rem 0 0.85rem;
+}
+.intro p {
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 34rem;
+  font-size: 0.98rem;
+}
+.points {
+  margin-top: 1.4rem;
+  display: grid;
+  gap: 0.65rem;
+}
+.point {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.7rem;
+  align-items: start;
+}
+.point .n {
+  width: 1.7rem; height: 1.7rem;
+  border-radius: 999px;
+  background: var(--pine-soft);
+  color: var(--pine);
+  display: grid; place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.point strong { display: block; font-size: 0.9rem; }
+.point span { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 0.12rem; line-height: 1.4; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--shadow);
+  padding: 1.45rem 1.4rem 1.3rem;
+  animation: rise 0.65s var(--ease) 0.05s both;
+}
+.card.shake { animation: shake 0.42s var(--ease); }
+.card h2 {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  margin-bottom: 0.3rem;
+}
+.card .lede { color: var(--muted); font-size: 0.86rem; line-height: 1.5; margin-bottom: 1.15rem; }
+.field { margin-bottom: 0.8rem; }
+.field label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 0.8rem; color: var(--muted); margin-bottom: 0.32rem; font-weight: 500;
+}
+.field label span { font-size: 0.72rem; }
+.wrap {
+  position: relative;
+}
+input[type="text"], input[type="password"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.72rem 0.85rem;
+  font: inherit;
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+input:focus {
+  border-color: var(--pine);
+  box-shadow: 0 0 0 3px var(--pine-soft);
+}
+input.invalid { border-color: var(--danger); }
+.eye {
+  position: absolute; right: 0.45rem; top: 50%; transform: translateY(-50%);
+  border: 0; background: transparent; color: var(--muted);
+  cursor: pointer; font: inherit; font-size: 0.75rem; font-weight: 600;
+  padding: 0.35rem 0.5rem; border-radius: 8px;
+}
+.eye:hover { color: var(--ink); background: #eef2eb; }
+.hint {
+  min-height: 1.15rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.28rem;
+}
+.hint.bad { color: var(--danger); }
+.hint.warn { color: var(--warn); }
+.banner {
+  display: none;
+  margin-bottom: 0.9rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(140,47,47,0.08);
+  color: var(--danger);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+.banner.on { display: block; }
+.btn {
+  width: 100%;
+  border: 0; border-radius: 12px;
+  padding: 0.78rem 0.9rem;
+  font: inherit; font-weight: 600;
+  background: var(--pine); color: #f4faf7;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  transition: opacity 0.2s, transform 0.2s var(--ease);
+}
+.btn:hover { opacity: 0.93; }
+.btn:active { transform: scale(0.985); }
+.btn:disabled { opacity: 0.55; cursor: wait; }
+.spin {
+  width: 0.95rem; height: 0.95rem;
+  border: 2px solid rgba(244,250,247,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+.btn.busy .spin { display: block; }
+.foot {
+  margin-top: 0.95rem;
+  display: flex; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap;
+  font-size: 0.78rem; color: var(--muted);
+}
+.foot a { color: var(--pine); font-weight: 600; text-decoration: none; }
+.foot a:hover { text-decoration: underline; }
+.meter {
+  height: 4px; border-radius: 99px; background: #e4eae2; overflow: hidden; margin-top: 0.35rem;
+}
+.meter > i { display: block; height: 100%; width: 0; background: var(--pine); transition: width 0.25s var(--ease); }
+.meter.mid > i { background: var(--warn); }
+.meter.low > i { background: var(--danger); }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-6px); }
+  40%, 60% { transform: translateX(6px); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <section class="intro">
+    <div class="kicker">Screener Admin</div>
+    <h1>選股器後台</h1>
+    <p>登入後可更新全部成份股行情，並新增自訂分類與股票。前台選股器維持公開可讀；寫入操作僅限管理員。</p>
+    <div class="points">
+      <div class="point"><div class="n">1</div><div><strong>更新成份資料</strong><span>重抓成份 ETF 持股與個股價量、基本面。</span></div></div>
+      <div class="point"><div class="n">2</div><div><strong>分類與自選</strong><span>建立分類、加入非成份標的，前台即可篩選。</span></div></div>
+      <div class="point"><div class="n">3</div><div><strong>研究用途</strong><span>本系統不構成投資建議，作空僅供區間參考。</span></div></div>
+    </div>
+  </section>
+
+  <section class="card" id="card">
+    <div class="banner" id="banner" role="alert"></div>
+
+    <form id="setupForm" class="hidden" hidden autocomplete="on">
+      <h2>建立管理員</h2>
+      <p class="lede">第一次使用請設定帳號。憑證只存在本機 <code>data/admin.json</code>，不會上傳。</p>
+      <div class="field">
+        <label for="suUser">帳號</label>
+        <input id="suUser" name="username" type="text" autocomplete="username" required minlength="3" maxlength="40"/>
+      </div>
+      <div class="field">
+        <label for="suPass">密碼 <span id="strengthLab">至少 8 碼</span></label>
+        <div class="wrap">
+          <input id="suPass" name="password" type="password" autocomplete="new-password" required minlength="8"/>
+          <button type="button" class="eye" data-target="suPass">顯示</button>
+        </div>
+        <div class="meter" id="meter"><i></i></div>
+      </div>
+      <div class="field">
+        <label for="suConfirm">確認密碼</label>
+        <input id="suConfirm" name="confirm" type="password" autocomplete="new-password" required minlength="8"/>
+        <div class="hint" id="matchHint"></div>
+      </div>
+      <button class="btn" id="suBtn" type="submit"><span class="spin"></span><span class="txt">建立並進入後台</span></button>
+    </form>
+
+    <form id="loginForm" class="hidden" hidden autocomplete="on">
+      <h2>管理員登入</h2>
+      <p class="lede">使用本機管理員帳號進入後台。連線僅限此電腦上的選股服務。</p>
+      <div class="field">
+        <label for="username">帳號</label>
+        <input id="username" name="username" type="text" autocomplete="username" required maxlength="40" autofocus/>
+      </div>
+      <div class="field">
+        <label for="password">密碼</label>
+        <div class="wrap">
+          <input id="password" name="password" type="password" autocomplete="current-password" required/>
+          <button type="button" class="eye" data-target="password">顯示</button>
+        </div>
+        <div class="hint" id="capsHint"></div>
+      </div>
+      <button class="btn" id="loginBtn" type="submit"><span class="spin"></span><span class="txt">登入</span></button>
+    </form>
+
+    <div class="foot">
+      <a href="/">返回選股器前台</a>
+      <span>本機服務 · 127.0.0.1</span>
+    </div>
+  </section>
+</div>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const card = $("card");
+  const banner = $("banner");
+  const setupForm = $("setupForm");
+  const loginForm = $("loginForm");
+
+  function showError(msg) {
+    banner.textContent = msg || "發生錯誤";
+    banner.classList.add("on");
+    card.classList.remove("shake");
+    void card.offsetWidth;
+    card.classList.add("shake");
+  }
+  function clearError() {
+    banner.classList.remove("on");
+    banner.textContent = "";
+  }
+  function busy(btn, on) {
+    btn.classList.toggle("busy", on);
+    btn.disabled = on;
+  }
+  async function parse(res) {
+    try { return await res.json(); }
+    catch { return { ok: false, error: "伺服器無回應" }; }
+  }
+
+  document.querySelectorAll(".eye").forEach((btn) => {
+    btn.onclick = () => {
+      const input = $(btn.dataset.target);
+      const hide = input.type === "text";
+      input.type = hide ? "password" : "text";
+      btn.textContent = hide ? "顯示" : "隱藏";
+    };
+  });
+
+  $("password").addEventListener("keyup", (e) => {
+    const on = e.getModifierState && e.getModifierState("CapsLock");
+    $("capsHint").textContent = on ? "Caps Lock 已開啟" : "";
+    $("capsHint").className = "hint" + (on ? " warn" : "");
+  });
+
+  function scorePassword(p) {
+    let s = 0;
+    if (p.length >= 8) s += 1;
+    if (p.length >= 12) s += 1;
+    if (/[A-Z]/.test(p) && /[a-z]/.test(p)) s += 1;
+    if (/\d/.test(p)) s += 1;
+    if (/[^A-Za-z0-9]/.test(p)) s += 1;
+    return s;
+  }
+  $("suPass").addEventListener("input", () => {
+    const p = $("suPass").value;
+    const s = scorePassword(p);
+    const meter = $("meter");
+    meter.className = "meter" + (s <= 2 ? " low" : s <= 3 ? " mid" : "");
+    meter.querySelector("i").style.width = (s / 5 * 100) + "%";
+    $("strengthLab").textContent = !p ? "至少 8 碼" : s <= 2 ? "偏弱" : s <= 3 ? "尚可" : "足夠";
+    checkMatch();
+  });
+  function checkMatch() {
+    const a = $("suPass").value, b = $("suConfirm").value;
+    const el = $("matchHint");
+    if (!b) { el.textContent = ""; el.className = "hint"; return; }
+    if (a === b) { el.textContent = "兩次密碼相符"; el.className = "hint"; }
+    else { el.textContent = "兩次密碼不一致"; el.className = "hint bad"; }
+  }
+  $("suConfirm").addEventListener("input", checkMatch);
+
+  setupForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearError();
+    const username = $("suUser").value.trim();
+    const password = $("suPass").value;
+    const confirm = $("suConfirm").value;
+    if (password !== confirm) return showError("兩次密碼不一致");
+    busy($("suBtn"), true);
+    const res = await fetch("/api/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, confirm }),
+    });
+    const data = await parse(res);
+    busy($("suBtn"), false);
+    if (!data.ok) return showError(data.error);
+    window.location.href = "/admin";
+  });
+
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearError();
+    busy($("loginBtn"), true);
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: $("username").value.trim(),
+        password: $("password").value,
+      }),
+    });
+    const data = await parse(res);
+    busy($("loginBtn"), false);
+    if (!data.ok) return showError(data.error);
+    window.location.href = "/admin";
+  });
+
+  (async () => {
+    try {
+      const res = await fetch("/api/session");
+      const data = await parse(res);
+      if (data.authenticated) {
+        window.location.href = "/admin";
+        return;
+      }
+      if (data.setup_required) {
+        setupForm.hidden = false;
+        setupForm.classList.remove("hidden");
+        setupForm.removeAttribute("aria-hidden");
+        loginForm.setAttribute("aria-hidden", "true");
+        $("suUser").focus();
+      } else {
+        loginForm.hidden = false;
+        loginForm.classList.remove("hidden");
+        loginForm.removeAttribute("aria-hidden");
+        setupForm.setAttribute("aria-hidden", "true");
+        $("username").focus();
+      }
+    } catch {
+      loginForm.classList.remove("hidden");
+      showError("無法連線後台，請確認服務已啟動。");
+    }
+  })();
+})();
+</script>
+</body>
+</html>

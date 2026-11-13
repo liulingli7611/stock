@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# One-command refresh for Stock analysis outputs + Canvas sync.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+if [[ ! -x .venv/bin/python ]]; then
+  echo "Creating .venv ..."
+  python3 -m venv .venv
+  .venv/bin/pip install -q -r requirements.txt
+fi
+
+echo "Updating 0050 ..."
+.venv/bin/python -m src.run_analysis
+
+echo "Updating 00919 strategy ..."
+.venv/bin/python -m src.run_00919_analysis
+
+if [[ -f src/eval_00919.py ]]; then
+  echo "Updating 00919 watch-eval ..."
+  .venv/bin/python -m src.eval_00919
+fi
+
+echo "Done."

@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>後台 · 選股器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #e9eee8;
+  --bg-2: #dfe6dd;
+  --panel: #f5f7f3;
+  --ink: #152019;
+  --muted: #5a6a5f;
+  --line: #c5d0c4;
+  --pine: #1a6b4f;
+  --pine-soft: rgba(26, 107, 79, 0.12);
+  --copper: #b85a2a;
+  --copper-soft: rgba(184, 90, 42, 0.12);
+  --warn: #9a6b16;
+  --danger: #8c2f2f;
+  --radius: 14px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow: 0 12px 40px rgba(21, 32, 25, 0.08);
+  --font-display: "Fraunces", "Noto Sans TC", serif;
+  --font-ui: "IBM Plex Sans", "Noto Sans TC", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(26,107,79,0.10), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 10%, rgba(184,90,42,0.08), transparent 50%),
+    linear-gradient(160deg, var(--bg), var(--bg-2));
+  background-attachment: fixed;
+}
+.app {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.1rem 1.15rem 2.8rem;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; padding: 0.9rem 0.8rem 2.2rem; }
+  .nav { position: relative; top: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .nav .brand { width: 100%; margin-bottom: 0.2rem; }
+}
+.nav {
+  position: sticky; top: 0.9rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--shadow);
+  padding: 1rem 0.9rem;
+}
+.nav .brand {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  margin-bottom: 0.15rem;
+}
+.nav .who { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.9rem; }
+.nav button.tab {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+.nav button.tab.on {
+  background: var(--pine-soft);
+  color: var(--pine);
+  font-weight: 600;
+  border-color: transparent;
+}
+.nav .links {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed var(--line);
+  display: grid; gap: 0.35rem;
+}
+.nav a, .nav .ghost {
+  font-size: 0.8rem; color: var(--muted); text-decoration: none;
+  border: 0; background: none; cursor: pointer; font: inherit; text-align: left; padding: 0.2rem 0.15rem;
+}
+.nav a:hover, .nav .ghost:hover { color: var(--pine); }
+
+.main { min-width: 0; animation: rise 0.45s var(--ease) both; }
+.panel {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: var(--shadow);
+  padding: 1.15rem 1.15rem 1.25rem;
+}
+.panel h2 {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  margin-bottom: 0.3rem;
+}
+.lede { color: var(--muted); font-size: 0.86rem; line-height: 1.5; margin-bottom: 1rem; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 720px) { .stats { grid-template-columns: 1fr 1fr; } }
+.stat {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.75rem;
+  background: #fff;
+}
+.stat .l { font-size: 0.72rem; color: var(--muted); }
+.stat .v { font-family: var(--font-display); font-size: 1.35rem; margin-top: 0.1rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.btn {
+  border: 0; border-radius: 11px; padding: 0.62rem 0.9rem;
+  font: inherit; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.45rem;
+}
+.btn:disabled { opacity: 0.55; cursor: wait; }
+.btn-primary { background: var(--pine); color: #f4faf7; }
+.btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+.btn-danger { background: transparent; border: 1px solid rgba(140,47,47,0.35); color: var(--danger); }
+.spin {
+  width: 0.9rem; height: 0.9rem;
+  border: 2px solid rgba(244,250,247,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+.progress {
+  margin-top: 1rem;
+  display: none;
+}
+.progress.on { display: block; }
+.bar {
+  height: 8px; border-radius: 99px; background: #e4eae2; overflow: hidden;
+}
+.bar > i { display: block; height: 100%; width: 0; background: var(--pine); transition: width 0.3s var(--ease); }
+.prog-meta { display: flex; justify-content: space-between; gap: 0.6rem; font-size: 0.78rem; color: var(--muted); margin: 0.45rem 0; }
+.toast {
+  margin-top: 0.75rem;
+  font-size: 0.84rem;
+  color: var(--muted);
+  min-height: 1.2rem;
+}
+.toast.bad { color: var(--danger); }
+.toast.ok { color: var(--pine); }
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: end;
+  margin-bottom: 0.9rem;
+}
+@media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+.field label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.28rem; }
+input[type="text"], input[type="search"], input[type="password"], select, textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  background: #fff;
+  color: var(--ink);
+}
+.pw-stack { max-width: 26rem; display: grid; gap: 0.8rem; }
+.wrap { position: relative; }
+.wrap input { padding-right: 3.2rem; }
+.eye {
+  position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%);
+  border: 0; background: transparent; color: var(--muted);
+  cursor: pointer; font: inherit; font-size: 0.75rem; font-weight: 600;
+  padding: 0.3rem 0.45rem; border-radius: 8px;
+}
+.eye:hover { color: var(--ink); background: #eef2eb; }
+.meter {
+  height: 4px; border-radius: 99px; background: #e4eae2; overflow: hidden; margin-top: 0.35rem;
+}
+.meter > i { display: block; height: 100%; width: 0; background: var(--pine); transition: width 0.25s var(--ease); }
+.meter.mid > i { background: var(--warn); }
+.meter.low > i { background: var(--danger); }
+.hint { min-height: 1.1rem; font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+.hint.bad { color: var(--danger); }
+.acct-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 1rem;
+  max-width: 26rem;
+}
+.acct-card .l { font-size: 0.72rem; color: var(--muted); }
+.acct-card .v { font-weight: 600; margin-top: 0.12rem; }
+.cat-list, .stock-table { width: 100%; }
+.cat-item, .stock-row {
+  display: grid;
+  gap: 0.45rem 0.7rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+.cat-item { grid-template-columns: 1fr auto; }
+.stock-row { grid-template-columns: 4.2rem 1fr minmax(8rem, 1.4fr) auto; }
+@media (max-width: 720px) {
+  .stock-row { grid-template-columns: 1fr; }
+}
+.cat-item strong, .stock-row strong { font-size: 0.92rem; }
+.meta { font-size: 0.75rem; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.chip {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+  color: var(--muted);
+}
+.chip.on { background: var(--pine-soft); border-color: var(--pine); color: var(--pine); font-weight: 600; }
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: #e8ebe6;
+  color: var(--muted);
+}
+.badge.custom { background: var(--copper-soft); color: var(--copper); }
+.row-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.hidden { display: none !important; }
+.check-groups { display: grid; gap: 1rem; }
+.check-group h3 {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.45rem;
+}
+.check-list { display: grid; gap: 0.45rem; }
+.check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.7rem;
+  align-items: start;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  cursor: pointer;
+}
+.check input { margin-top: 0.18rem; width: 1rem; height: 1rem; accent-color: var(--pine); }
+.check strong { font-size: 0.92rem; }
+.check .meta { grid-column: 2; }
+.check.on { border-color: var(--pine); background: var(--pine-soft); }
+.pill {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  background: #e8ebe6;
+  color: var(--muted);
+  vertical-align: 0.1em;
+}
+.pill.ready { background: var(--pine-soft); color: var(--pine); }
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+  margin-bottom: 0.7rem;
+}
+.search { flex: 1; min-width: 10rem; }
+.empty { padding: 1.4rem 0.4rem; color: var(--muted); font-size: 0.88rem; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="nav">
+    <div class="brand">選股器後台</div>
+    <div class="who" id="who">—</div>
+    <button type="button" class="tab on" data-panel="data">資料更新</button>
+    <button type="button" class="tab" data-panel="tech">技術參數</button>
+    <button type="button" class="tab" data-panel="cats">股票分類</button>
+    <button type="button" class="tab" data-panel="stocks">股票名單</button>
+    <button type="button" class="tab" data-panel="account">密碼管理</button>
+    <div class="links">
+      <a href="/">開啟前台選股器</a>
+      <button type="button" class="ghost" id="btnLogout">登出</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section class="panel" id="panel-data">
+      <h2>更新全部成份股</h2>
+      <p class="lede">重抓成份 ETF 最新持股（0050、00919、00878、00403A、009828、0052），並更新宇宙內每一檔（含自選股）的價量與本益比／殖利率。約需數分鐘，期間可停留此頁查看進度。</p>
+      <div class="stats">
+        <div class="stat"><div class="l">資料時間</div><div class="v" id="asOf">—</div></div>
+        <div class="stat"><div class="l">掃描檔數</div><div class="v" id="cUni">0</div></div>
+        <div class="stat"><div class="l">作多</div><div class="v" id="cLong">0</div></div>
+        <div class="stat"><div class="l">作空／觀察</div><div class="v" id="cRest">0</div></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="btnRefresh"><span class="txt">更新全部成份股</span></button>
+      </div>
+      <div class="progress" id="progress">
+        <div class="prog-meta">
+          <span id="progLabel">準備中</span>
+          <span id="progCount">0 / 0</span>
+        </div>
+        <div class="bar"><i id="progBar"></i></div>
+      </div>
+      <div class="toast" id="dataToast"></div>
+    </section>
+
+    <section class="panel hidden" id="panel-tech">
+      <h2>技術面參數</h2>
+      <p class="lede">勾選後，前台標籤會多要求這些條件。未勾選的不參與篩選。均線有兩組可分開勾選：短均線 5／10／20／30 日，中均線 10／20／60／90 日。RSI 的上下限仍由前台滑桿調整。缺數值的指標在下次更新成份股前不會擋掉標的。</p>
+      <div id="techList" class="check-groups"></div>
+      <div class="actions" style="margin-top: 1rem;">
+        <button type="button" class="btn btn-primary" id="btnTechSave">儲存勾選</button>
+        <button type="button" class="btn btn-ghost" id="btnTechReset">還原預設</button>
+      </div>
+      <div class="toast" id="techToast"></div>
+    </section>
+
+    <section class="panel hidden" id="panel-cats">
+      <h2>股票分類</h2>
+      <p class="lede">分類用來在前台篩選宇宙。預設有「自選」；可再新增產業或題材。刪除分類不會刪除股票，只會解除標記。</p>
+      <form class="form-row" id="catForm">
+        <div class="field">
+          <label for="catName">分類名稱</label>
+          <input id="catName" type="text" maxlength="40" placeholder="例如：半導體" required/>
+        </div>
+        <div class="field">
+          <label for="catNote">備註（選填）</label>
+          <input id="catNote" type="text" maxlength="80" placeholder="給自己看的說明"/>
+        </div>
+        <button class="btn btn-primary" type="submit">新增分類</button>
+      </form>
+      <div id="catList" class="cat-list"></div>
+      <div class="toast" id="catToast"></div>
+    </section>
+
+    <section class="panel hidden" id="panel-stocks">
+      <h2>新增股票</h2>
+      <p class="lede">輸入台股代碼即可加入宇宙。已在成份 ETF 的標的也可加入以便掛分類；非成份股會標為自選，並嘗試立即抓取行情。</p>
+      <form id="stockForm">
+        <div class="form-row">
+          <div class="field">
+            <label for="stTicker">代碼</label>
+            <input id="stTicker" type="text" inputmode="numeric" maxlength="6" placeholder="2330" required/>
+          </div>
+          <div class="field">
+            <label for="stName">名稱（可留空自動帶入）</label>
+            <input id="stName" type="text" maxlength="40" placeholder="台積電"/>
+          </div>
+          <button class="btn btn-primary" type="submit">新增股票</button>
+        </div>
+        <div class="field">
+          <label>分到哪些分類</label>
+          <div class="chips" id="stCats"></div>
+        </div>
+      </form>
+      <div class="toolbar">
+        <input class="search" id="stQ" type="search" placeholder="搜尋代碼或名稱" autocomplete="off"/>
+      </div>
+      <div id="stockList"></div>
+      <div class="toast" id="stockToast"></div>
+    </section>
+
+    <section class="panel hidden" id="panel-account">
+      <h2>密碼管理</h2>
+      <p class="lede">變更後台帳號或密碼。任何變更都需輸入目前密碼；新密碼至少 8 碼，只存在本機。</p>
+      <div class="acct-card">
+        <div class="l">目前帳號</div>
+        <div class="v" id="acctUser">—</div>
+      </div>
+      <form id="acctForm" class="pw-stack" autocomplete="off">
+        <div class="field">
+          <label for="acctUsername">新帳號（可不改）</label>
+          <input id="acctUsername" name="username" type="text" maxlength="40" autocomplete="username"/>
+        </div>
+        <div class="field">
+          <label for="acctCurrent">目前密碼</label>
+          <div class="wrap">
+            <input id="acctCurrent" name="current_password" type="password" autocomplete="current-password" required/>
+            <button type="button" class="eye" data-target="acctCurrent">顯示</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="acctNew">新密碼 <span id="acctStrength">至少 8 碼，留空則不改</span></label>
+          <div class="wrap">
+            <input id="acctNew" name="new_password" type="password" autocomplete="new-password" minlength="8"/>
+            <button type="button" class="eye" data-target="acctNew">顯示</button>
+          </div>
+          <div class="meter" id="acctMeter"><i></i></div>
+        </div>
+        <div class="field">
+          <label for="acctConfirm">確認新密碼</label>
+          <div class="wrap">
+            <input id="acctConfirm" name="confirm" type="password" autocomplete="new-password" minlength="8"/>
+            <button type="button" class="eye" data-target="acctConfirm">顯示</button>
+          </div>
+          <div class="hint" id="acctMatch"></div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" id="acctBtn" type="submit">儲存變更</button>
+        </div>
+      </form>
+      <div class="toast" id="acctToast"></div>
+    </section>
+  </main>
+</div>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const state = {
+    csrf: "",
+    catalog: { categories: [], stocks: [] },
+    tech: { enabled: ["rsi"], filters: [], ready: {} },
+    techDirty: false,
+    selectedCats: new Set(),
+    editingTicker: null,
+    q: "",
+    poll: null,
+  };
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+  function toast(id, msg, kind) {
+    const el = $(id);
+    el.textContent = msg || "";
+    el.className = "toast" + (kind ? " " + kind : "");
+  }
+  async function parse(res) {
+    try { return await res.json(); }
+    catch { return { ok: false, error: "伺服器無回應" }; }
+  }
+  async function api(url, opts) {
+    const headers = Object.assign({ "Content-Type": "application/json", "X-CSRF-Token": state.csrf }, (opts && opts.headers) || {});
+    const res = await fetch(url, Object.assign({}, opts, { headers }));
+    if (res.status === 401) {
+      window.location.href = "/admin/login";
+      return { ok: false, error: "未登入" };
+    }
+    return parse(res);
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return "尚無資料";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return String(iso).slice(0, 16);
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  function setPanel(id) {
+    document.querySelectorAll(".nav .tab").forEach((b) => b.classList.toggle("on", b.dataset.panel === id));
+    ["data", "tech", "cats", "stocks", "account"].forEach((p) => $(`panel-${p}`).classList.toggle("hidden", p !== id));
+  }
+
+  function renderTech() {
+    const pack = state.tech || { filters: [], enabled: [], ready: {} };
+    const enabled = new Set(pack.enabled || []);
+    const ready = pack.ready || {};
+    const groups = [];
+    (pack.filters || []).forEach((f) => {
+      let g = groups.find((x) => x.name === f.group);
+      if (!g) {
+        g = { name: f.group || "其他", items: [] };
+        groups.push(g);
+      }
+      g.items.push(f);
+    });
+    const root = $("techList");
+    if (!groups.length) {
+      root.innerHTML = `<div class="empty">尚無技術參數。</div>`;
+      return;
+    }
+    root.innerHTML = groups.map((g) => `
+      <div class="check-group">
+        <h3>${esc(g.name)}</h3>
+        <div class="check-list">
+          ${g.items.map((f) => {
+            const on = enabled.has(f.id);
+            const isReady = !!ready[f.id];
+            return `<label class="check${on ? " on" : ""}">
+              <input type="checkbox" data-id="${esc(f.id)}" ${on ? "checked" : ""}/>
+              <span>
+                <strong>${esc(f.name)}</strong>
+                <span class="pill ${isReady ? "ready" : ""}">${isReady ? "現有資料可用" : "更新後才有數值"}</span>
+              </span>
+              <span class="meta">${esc(f.desc)}</span>
+            </label>`;
+          }).join("")}
+        </div>
+      </div>`).join("");
+  }
+
+  function readTechEnabled() {
+    return [...document.querySelectorAll("#techList input[type=checkbox]:checked")].map((el) => el.dataset.id);
+  }
+
+  function renderJob(job) {
+    const running = job && job.status === "running";
+    $("btnRefresh").disabled = running;
+    $("btnRefresh").querySelector(".txt").textContent = running ? "更新中…" : "更新全部成份股";
+    $("progress").classList.toggle("on", running || (job && job.status === "done"));
+    const total = (job && job.total) || 0;
+    const current = (job && job.current) || 0;
+    const pct = total ? Math.min(100, Math.round(current / total * 100)) : (running ? 8 : job && job.status === "done" ? 100 : 0);
+    $("progBar").style.width = pct + "%";
+    $("progCount").textContent = total ? `${current} / ${total}` : running ? "準備中" : "";
+    $("progLabel").textContent = (job && job.message) || (job && job.ticker ? `${job.ticker} ${job.name || ""}` : "—");
+    if (job && job.status === "error") toast("dataToast", job.error || "更新失敗", "bad");
+    else if (job && job.status === "done") toast("dataToast", "成份股資料已更新，前台可直接查看。", "ok");
+    else if (running) toast("dataToast", "正在抓取持股與個股行情，請勿關閉此頁。");
+  }
+
+  function renderCats() {
+    const list = $("catList");
+    const cats = state.catalog.categories || [];
+    const stocks = state.catalog.stocks || [];
+    if (!cats.length) {
+      list.innerHTML = `<div class="empty">尚無分類。</div>`;
+      return;
+    }
+    list.innerHTML = cats.map((c) => {
+      const n = stocks.filter((s) => (s.category_ids || []).includes(c.id)).length;
+      return `<div class="cat-item" data-id="${esc(c.id)}">
+        <div>
+          <strong>${esc(c.name)}</strong>
+          <div class="meta">${n} 檔${c.note ? " · " + esc(c.note) : ""}</div>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn btn-ghost" data-act="rename">重新命名</button>
+          <button type="button" class="btn btn-danger" data-act="del">刪除</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderStockCatChips() {
+    const el = $("stCats");
+    const cats = state.catalog.categories || [];
+    el.innerHTML = cats.map((c) =>
+      `<button type="button" class="chip${state.selectedCats.has(c.id) ? " on" : ""}" data-id="${esc(c.id)}">${esc(c.name)}</button>`
+    ).join("") || `<span class="meta">請先新增分類</span>`;
+  }
+
+  function renderStocks() {
+    const stocks = state.catalog.stocks || [];
+    const cats = Object.fromEntries((state.catalog.categories || []).map((c) => [c.id, c.name]));
+    const q = state.q.toLowerCase();
+    const filtered = stocks.filter((s) => {
+      if (!q) return true;
+      return String(s.ticker).includes(q) || String(s.name || "").toLowerCase().includes(q);
+    });
+    const el = $("stockList");
+    if (!filtered.length) {
+      el.innerHTML = `<div class="empty">${stocks.length ? "沒有符合搜尋的股票。" : "尚未新增股票。可用上方表單加入。"}</div>`;
+      return;
+    }
+    el.innerHTML = filtered.map((s) => {
+      const ids = s.category_ids || [];
+      const editing = state.editingTicker === s.ticker;
+      const tags = editing
+        ? (state.catalog.categories || []).map((c) =>
+            `<button type="button" class="chip${ids.includes(c.id) ? " on" : ""}" data-act="togcat" data-cat="${esc(c.id)}">${esc(c.name)}</button>`
+          ).join("")
+        : ids.map((id) => cats[id]).filter(Boolean).map((t) => `<span class="badge">${esc(t)}</span>`).join("");
+      return `<div class="stock-row" data-ticker="${esc(s.ticker)}">
+        <strong>${esc(s.ticker)}</strong>
+        <div>${esc(s.name || "—")}</div>
+        <div class="chips">${tags || `<span class="meta">未分類</span>`}</div>
+        <div class="row-actions">
+          <button type="button" class="btn btn-ghost" data-act="edit">${editing ? "完成" : "分類"}</button>
+          <button type="button" class="btn btn-danger" data-act="del">移除</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  async function refreshStatus() {
+    const data = await api("/api/admin/status");
+    if (!data.ok) return;
+    state.csrf = data.csrf || state.csrf;
+    state.catalog = data.catalog || state.catalog;
+    $("who").textContent = data.username ? `登入為 ${data.username}` : "";
+    $("acctUser").textContent = data.username || "—";
+    if (data.username && !$("acctUsername").value) $("acctUsername").value = data.username;
+    $("asOf").textContent = fmtTime(data.generated_at).slice(5);
+    const c = data.counts || {};
+    $("cUni").textContent = c.universe || 0;
+    $("cLong").textContent = c.long_candidate || 0;
+    $("cRest").textContent = (c.short_candidate || 0) + " / " + (c.watch || 0);
+    renderJob(data.job || {});
+    if (!state.techDirty && data.tech_filters) {
+      state.tech = data.tech_filters;
+      renderTech();
+    }
+    renderCats();
+    renderStockCatChips();
+    renderStocks();
+    if (data.job && data.job.status === "running") startPoll();
+    else stopPoll();
+  }
+
+  function startPoll() {
+    if (state.poll) return;
+    state.poll = setInterval(async () => {
+      const data = await api("/api/admin/refresh");
+      if (!data.ok) return;
+      renderJob(data.job || {});
+      if (data.job && data.job.status !== "running") {
+        stopPoll();
+        refreshStatus();
+      }
+    }, 1200);
+  }
+  function stopPoll() {
+    if (state.poll) { clearInterval(state.poll); state.poll = null; }
+  }
+
+  document.querySelectorAll(".nav .tab").forEach((btn) => {
+    btn.onclick = () => setPanel(btn.dataset.panel);
+  });
+
+  $("techList").addEventListener("change", (e) => {
+    const input = e.target.closest("input[type=checkbox]");
+    if (!input) return;
+    state.techDirty = true;
+    const label = input.closest(".check");
+    if (label) label.classList.toggle("on", input.checked);
+  });
+
+  $("btnTechSave").onclick = async () => {
+    const enabled = readTechEnabled();
+    $("btnTechSave").disabled = true;
+    const data = await api("/api/admin/tech-filters", {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    });
+    $("btnTechSave").disabled = false;
+    if (!data.ok) return toast("techToast", data.error, "bad");
+    state.tech = data.tech_filters || state.tech;
+    state.tech.enabled = data.enabled || enabled;
+    state.techDirty = false;
+    renderTech();
+    toast("techToast", "已儲存。前台按「重新載入資料」後套用。", "ok");
+  };
+
+  $("btnTechReset").onclick = () => {
+    const defaults = (state.tech.filters || []).filter((f) => f.default).map((f) => f.id);
+    state.tech = Object.assign({}, state.tech, { enabled: defaults.length ? defaults : ["rsi"] });
+    state.techDirty = true;
+    renderTech();
+    toast("techToast", "已回到預設勾選，按儲存後才會生效。");
+  };
+
+  $("btnRefresh").onclick = async () => {
+    toast("dataToast", "");
+    const data = await api("/api/admin/refresh", { method: "POST", body: "{}" });
+    if (!data.ok) return toast("dataToast", data.error, "bad");
+    renderJob(data.job || {});
+    startPoll();
+  };
+
+  $("catForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("catName").value.trim();
+    const note = $("catNote").value.trim();
+    const data = await api("/api/admin/categories", { method: "POST", body: JSON.stringify({ name, note }) });
+    if (!data.ok) return toast("catToast", data.error, "bad");
+    $("catName").value = "";
+    $("catNote").value = "";
+    state.catalog = data.catalog;
+    renderCats();
+    renderStockCatChips();
+    toast("catToast", `已新增「${name}」`, "ok");
+  });
+
+  $("catList").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const row = btn.closest(".cat-item");
+    const id = row.dataset.id;
+    const cat = (state.catalog.categories || []).find((c) => c.id === id);
+    if (btn.dataset.act === "rename") {
+      const name = prompt("新的分類名稱", cat ? cat.name : "");
+      if (!name) return;
+      const data = await api(`/api/admin/categories/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      });
+      if (!data.ok) return toast("catToast", data.error, "bad");
+      state.catalog = data.catalog;
+      renderCats();
+      renderStockCatChips();
+      renderStocks();
+    }
+    if (btn.dataset.act === "del") {
+      if (!confirm(`刪除分類「${cat ? cat.name : id}」？股票會保留。`)) return;
+      const data = await api(`/api/admin/categories/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!data.ok) return toast("catToast", data.error, "bad");
+      state.catalog = data.catalog;
+      state.selectedCats.delete(id);
+      renderCats();
+      renderStockCatChips();
+      renderStocks();
+    }
+  });
+
+  $("stCats").addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (state.selectedCats.has(id)) state.selectedCats.delete(id);
+    else state.selectedCats.add(id);
+    renderStockCatChips();
+  });
+
+  $("stockForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const ticker = $("stTicker").value.trim();
+    const name = $("stName").value.trim();
+    toast("stockToast", "新增中…");
+    const data = await api("/api/admin/stocks", {
+      method: "POST",
+      body: JSON.stringify({
+        ticker,
+        name,
+        category_ids: [...state.selectedCats],
+        fetch: true,
+      }),
+    });
+    if (!data.ok) return toast("stockToast", data.error, "bad");
+    $("stTicker").value = "";
+    $("stName").value = "";
+    state.catalog = data.catalog;
+    renderStocks();
+    renderCats();
+    const extra = data.fetch_error ? `（${data.fetch_error}）` : (data.fetched ? "，已抓取行情" : "");
+    toast("stockToast", `已加入 ${data.stock.ticker}${extra}`, data.fetch_error ? "bad" : "ok");
+  });
+
+  $("stQ").addEventListener("input", (e) => {
+    state.q = e.target.value.trim();
+    renderStocks();
+  });
+
+  $("stockList").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const row = btn.closest(".stock-row");
+    const ticker = row.dataset.ticker;
+    const stock = (state.catalog.stocks || []).find((s) => s.ticker === ticker);
+    if (btn.dataset.act === "del") {
+      if (!confirm(`從自選名單移除 ${ticker}？`)) return;
+      const data = await api(`/api/admin/stocks/${encodeURIComponent(ticker)}`, { method: "DELETE" });
+      if (!data.ok) return toast("stockToast", data.error, "bad");
+      state.catalog = data.catalog;
+      if (state.editingTicker === ticker) state.editingTicker = null;
+      renderStocks();
+      renderCats();
+      toast("stockToast", `已移除 ${ticker}`, "ok");
+      return;
+    }
+    if (btn.dataset.act === "edit") {
+      state.editingTicker = state.editingTicker === ticker ? null : ticker;
+      renderStocks();
+      return;
+    }
+    if (btn.dataset.act === "togcat" && stock) {
+      const catId = btn.dataset.cat;
+      const ids = new Set(stock.category_ids || []);
+      if (ids.has(catId)) ids.delete(catId);
+      else ids.add(catId);
+      const data = await api(`/api/admin/stocks/${encodeURIComponent(ticker)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ category_ids: [...ids] }),
+      });
+      if (!data.ok) return toast("stockToast", data.error, "bad");
+      state.catalog = data.catalog;
+      renderStocks();
+      renderCats();
+    }
+  });
+
+  $("btnLogout").onclick = async () => {
+    await api("/admin/logout", { method: "POST", body: "{}" });
+    window.location.href = "/admin/login";
+  };
+
+  document.querySelectorAll(".eye").forEach((btn) => {
+    btn.onclick = () => {
+      const input = $(btn.dataset.target);
+      if (!input) return;
+      const hide = input.type === "text";
+      input.type = hide ? "password" : "text";
+      btn.textContent = hide ? "顯示" : "隱藏";
+    };
+  });
+
+  function scorePassword(p) {
+    let s = 0;
+    if (p.length >= 8) s += 1;
+    if (p.length >= 12) s += 1;
+    if (/[A-Z]/.test(p) && /[a-z]/.test(p)) s += 1;
+    if (/\d/.test(p)) s += 1;
+    if (/[^A-Za-z0-9]/.test(p)) s += 1;
+    return s;
+  }
+  function syncPwHints() {
+    const p = $("acctNew").value;
+    const c = $("acctConfirm").value;
+    const meter = $("acctMeter");
+    const s = scorePassword(p);
+    meter.className = "meter" + (!p ? "" : s <= 2 ? " low" : s <= 3 ? " mid" : "");
+    meter.querySelector("i").style.width = p ? (s / 5 * 100) + "%" : "0";
+    $("acctStrength").textContent = !p ? "至少 8 碼，留空則不改" : s <= 2 ? "偏弱" : s <= 3 ? "尚可" : "足夠";
+    const el = $("acctMatch");
+    if (!c) { el.textContent = ""; el.className = "hint"; return; }
+    if (p === c) { el.textContent = "兩次密碼相符"; el.className = "hint"; }
+    else { el.textContent = "兩次密碼不一致"; el.className = "hint bad"; }
+  }
+  $("acctNew").addEventListener("input", syncPwHints);
+  $("acctConfirm").addEventListener("input", syncPwHints);
+
+  $("acctForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = $("acctUsername").value.trim();
+    const current_password = $("acctCurrent").value;
+    const new_password = $("acctNew").value;
+    const confirm = $("acctConfirm").value;
+    if (new_password && new_password !== confirm) {
+      return toast("acctToast", "兩次密碼不一致", "bad");
+    }
+    $("acctBtn").disabled = true;
+    const data = await api("/api/admin/account", {
+      method: "POST",
+      body: JSON.stringify({ username, current_password, new_password, confirm }),
+    });
+    $("acctBtn").disabled = false;
+    if (!data.ok) return toast("acctToast", data.error, "bad");
+    $("acctCurrent").value = "";
+    $("acctNew").value = "";
+    $("acctConfirm").value = "";
+    syncPwHints();
+    $("who").textContent = data.username ? `登入為 ${data.username}` : "";
+    $("acctUser").textContent = data.username || "—";
+    $("acctUsername").value = data.username || "";
+    toast("acctToast", data.message || "已更新", "ok");
+  });
+
+  refreshStatus();
+})();
+</script>
+</body>
+</html>

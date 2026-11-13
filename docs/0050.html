@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>0050 波段＋中長期策略分析</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-0: #071018;
+      --bg-1: #0c1a24;
+      --ink: #e8f1f4;
+      --muted: #8aa0ab;
+      --line: rgba(232, 241, 244, 0.12);
+      --panel: rgba(14, 32, 44, 0.72);
+      --teal: #3ecfb2;
+      --teal-dim: rgba(62, 207, 178, 0.16);
+      --amber: #f0b35a;
+      --amber-dim: rgba(240, 179, 90, 0.14);
+      --rose: #f07178;
+      --rose-dim: rgba(240, 113, 120, 0.14);
+      --sky: #7eb8ff;
+      --ok: #3ecfb2;
+      --warn: #f0b35a;
+      --bad: #f07178;
+      --radius: 18px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg-0);
+      color: var(--ink);
+      font-family: "Noto Sans TC", "Bricolage Grotesque", sans-serif;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 55% at 12% -10%, rgba(62, 207, 178, 0.22), transparent 55%),
+        radial-gradient(ellipse 70% 50% at 92% 8%, rgba(240, 179, 90, 0.16), transparent 50%),
+        radial-gradient(ellipse 60% 45% at 70% 100%, rgba(126, 184, 255, 0.10), transparent 55%),
+        linear-gradient(165deg, var(--bg-0), var(--bg-1) 45%, #08141c);
+      z-index: 0;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.35;
+      background-image:
+        linear-gradient(rgba(232, 241, 244, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(232, 241, 244, 0.035) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 20%, transparent 75%);
+      z-index: 0;
+    }
+
+    .deck {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      width: 100%;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      padding: clamp(1.4rem, 3.5vw, 3rem) clamp(1.4rem, 4vw, 4rem) 4.5rem;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(18px) scale(0.985);
+      transition: opacity 0.45s var(--ease), transform 0.45s var(--ease), visibility 0.45s;
+      overflow: auto;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: none;
+    }
+
+    .slide.exit {
+      opacity: 0;
+      transform: translateY(-12px) scale(0.99);
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      color: var(--teal);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 0.85rem;
+    }
+
+    .kicker::before {
+      content: "";
+      width: 1.6rem;
+      height: 2px;
+      background: var(--teal);
+    }
+
+    h1, h2, h3 {
+      font-family: "Bricolage Grotesque", "Noto Sans TC", sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.12;
+    }
+
+    h1 { font-size: clamp(2.2rem, 5.2vw, 4.2rem); max-width: 14ch; }
+    h2 { font-size: clamp(1.55rem, 3.2vw, 2.45rem); margin-bottom: 1.1rem; }
+    h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.55rem; }
+
+    .lead {
+      margin-top: 1rem;
+      max-width: 38rem;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.5vw, 1.2rem);
+      line-height: 1.65;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 1.6rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 999px;
+      font-size: 0.85rem;
+      color: var(--ink);
+      backdrop-filter: blur(10px);
+    }
+
+    .chip strong { color: var(--teal); font-weight: 700; }
+    .chip.amber strong { color: var(--amber); }
+    .chip.rose strong { color: var(--rose); }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      margin-top: 0.4rem;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    @media (max-width: 900px) {
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .hero-split { grid-template-columns: 1fr !important; }
+      .level-board { grid-template-columns: 1fr !important; }
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.15rem 1.25rem;
+      backdrop-filter: blur(14px);
+    }
+
+    .panel.accent-teal { box-shadow: inset 3px 0 0 var(--teal); }
+    .panel.accent-amber { box-shadow: inset 3px 0 0 var(--amber); }
+    .panel.accent-rose { box-shadow: inset 3px 0 0 var(--rose); }
+    .panel.accent-sky { box-shadow: inset 3px 0 0 var(--sky); }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.35rem;
+    }
+
+    .stat-value {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: clamp(1.55rem, 2.8vw, 2.2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .stat-sub {
+      margin-top: 0.35rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .badge.ok { background: var(--teal-dim); color: var(--teal); }
+    .badge.warn { background: var(--amber-dim); color: var(--amber); }
+    .badge.bad { background: var(--rose-dim); color: var(--rose); }
+    .badge.neutral { background: rgba(126, 184, 255, 0.14); color: var(--sky); }
+
+    .list {
+      list-style: none;
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .list li {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.75rem;
+      align-items: start;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.95rem;
+    }
+
+    .list li span.num {
+      font-family: "Bricolage Grotesque", sans-serif;
+      color: var(--teal);
+      font-weight: 800;
+      font-size: 0.9rem;
+      min-width: 1.5rem;
+    }
+
+    .list li strong { color: var(--ink); font-weight: 700; }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .table th, .table td {
+      text-align: left;
+      padding: 0.7rem 0.55rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    .table th {
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .table td.num {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: 0.65rem;
+      margin-top: 0.5rem;
+    }
+
+    .flow-node {
+      flex: 1 1 140px;
+      min-width: 120px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0.9rem 1rem;
+      position: relative;
+    }
+
+    .flow-node .layer {
+      font-size: 0.7rem;
+      color: var(--amber);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+      font-weight: 700;
+    }
+
+    .flow-arrow {
+      align-self: center;
+      color: var(--teal);
+      font-size: 1.2rem;
+      opacity: 0.8;
+    }
+
+    .hero-split {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1.5rem;
+      align-items: end;
+      flex: 1;
+      margin-top: 1rem;
+    }
+
+    .price-hero {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: clamp(3.2rem, 8vw, 6rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 0.95;
+      background: linear-gradient(120deg, #fff 20%, var(--teal) 85%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .trend-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.9rem;
+      padding: 0.55rem 1rem;
+      border-radius: 999px;
+      background: var(--teal-dim);
+      border: 1px solid rgba(62, 207, 178, 0.35);
+      color: var(--teal);
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .trend-pill::before {
+      content: "";
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 0 4px rgba(62, 207, 178, 0.2);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.15); opacity: 0.7; }
+    }
+
+    .level-board {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+
+    .ladder {
+      position: relative;
+      padding: 0.4rem 0 0.4rem 1.1rem;
+    }
+
+    .ladder::before {
+      content: "";
+      position: absolute;
+      left: 0.35rem;
+      top: 0.6rem;
+      bottom: 0.6rem;
+      width: 2px;
+      background: linear-gradient(var(--rose), var(--amber), var(--teal));
+      border-radius: 2px;
+    }
+
+    .ladder-item {
+      position: relative;
+      padding: 0.55rem 0 0.55rem 0.85rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.5rem;
+      align-items: baseline;
+    }
+
+    .ladder-item::before {
+      content: "";
+      position: absolute;
+      left: -0.02rem;
+      top: 1.05rem;
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: var(--bg-0);
+      border: 2px solid var(--teal);
+    }
+
+    .ladder-item.pressure::before { border-color: var(--rose); }
+    .ladder-item.target::before { border-color: var(--amber); }
+    .ladder-item.stop::before { border-color: var(--rose); }
+
+    .ladder-item .name { color: var(--muted); font-size: 0.86rem; }
+    .ladder-item .px {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: 1.15rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .bar-track {
+      height: 0.55rem;
+      background: rgba(232, 241, 244, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 0.7rem;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      width: 0;
+      transition: width 1s var(--ease) 0.2s;
+    }
+
+    .slide.active .bar-fill.strategy { width: 12%; background: var(--rose); }
+    .slide.active .bar-fill.buyhold { width: 100%; background: var(--teal); }
+
+    .states {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 900px) {
+      .states, .compare { grid-template-columns: 1fr 1fr; }
+    }
+
+    .state-card {
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      padding: 1rem;
+      background: var(--panel);
+      min-height: 9.5rem;
+    }
+
+    .state-card.active-state {
+      border-color: rgba(62, 207, 178, 0.5);
+      background: linear-gradient(160deg, rgba(62, 207, 178, 0.18), rgba(14, 32, 44, 0.7));
+    }
+
+    .state-card .code {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: 1.05rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .footer-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.85rem clamp(1rem, 3vw, 2rem);
+      background: linear-gradient(transparent, rgba(7, 16, 24, 0.92) 35%);
+      backdrop-filter: blur(8px);
+    }
+
+    .dots {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      flex: 1;
+    }
+
+    .dot {
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(232, 241, 244, 0.22);
+      cursor: pointer;
+      transition: width 0.25s var(--ease), background 0.25s;
+    }
+
+    .dot.active {
+      width: 1.5rem;
+      background: var(--teal);
+    }
+
+    .nav-btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 0.55rem 1rem;
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .nav-btn:hover { border-color: var(--teal); }
+    .nav-btn:active { transform: scale(0.97); }
+    .nav-btn:disabled { opacity: 0.35; cursor: default; }
+
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      width: 0;
+      background: linear-gradient(90deg, var(--teal), var(--amber));
+      z-index: 6;
+      transition: width 0.35s var(--ease);
+    }
+
+    .slide-no {
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .note {
+      margin-top: 1rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    .title-brand {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      color: var(--teal);
+      margin-bottom: 1.1rem;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 0.4rem;
+    }
+
+    @media (max-width: 800px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    .metric-mini {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.9rem;
+    }
+
+    .metric-mini:last-child { border-bottom: 0; }
+    .metric-mini span { color: var(--muted); }
+    .metric-mini b {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .spark {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.28rem;
+      height: 4.5rem;
+      margin-top: 0.8rem;
+    }
+
+    .spark span {
+      flex: 1;
+      border-radius: 4px 4px 0 0;
+      background: linear-gradient(180deg, var(--teal), rgba(62, 207, 178, 0.25));
+      opacity: 0.85;
+      transform-origin: bottom;
+      animation: rise 0.7s var(--ease) both;
+    }
+
+    @keyframes rise {
+      from { transform: scaleY(0.2); opacity: 0; }
+      to { transform: scaleY(1); opacity: 0.85; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .slide, .bar-fill, .spark span, .trend-pill::before { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+
+  <div class="deck" id="deck" aria-live="polite">
+
+    <!-- 1. Cover -->
+    <section class="slide active" data-title="封面">
+      <div class="title-brand">YUANTA TAIWAN 50 · 0050</div>
+      <p class="kicker">Strategy Briefing</p>
+      <h1>波段為主<br />兼顧中長期加碼</h1>
+      <p class="lead">以日／週線波段進出為核心，搭配定投＋逢低分批，把基本面環境、技術狀態與具體價位一次對齊。</p>
+      <div class="meta-row">
+        <span class="chip">資料日 <strong>2026-09-17</strong></span>
+        <span class="chip">現價 <strong>108.05</strong></span>
+        <span class="chip">趨勢 <strong>StrongUp</strong></span>
+        <span class="chip amber">風險上限 <strong>~15% DD</strong></span>
+      </div>
+      <p class="note">參數與區間供決策參考，非投資建議；實盤請自行承擔風險。</p>
+    </section>
+
+    <!-- 2. Snapshot -->
+    <section class="slide" data-title="今日快照">
+      <p class="kicker">Live Snapshot</p>
+      <h2>今日狀態一覽</h2>
+      <div class="hero-split">
+        <div>
+          <div class="stat-label">現價（0050）</div>
+          <div class="price-hero">108.05</div>
+          <div class="trend-pill">StrongUp · 只做多、回檔買</div>
+          <div class="meta-row">
+            <span class="chip">波段做多 <strong>允許</strong></span>
+            <span class="chip">部位提示 <strong>full_swing</strong></span>
+            <span class="chip amber">當日訊號 <strong>無</strong></span>
+          </div>
+        </div>
+        <div class="grid" style="gap:0.75rem">
+          <div class="panel accent-teal">
+            <div class="stat-label">MA 排列</div>
+            <div class="stat-value" style="font-size:1.35rem">20 &gt; 60 &gt; 120</div>
+            <div class="stat-sub">106.92 · 104.75 · 99.04</div>
+          </div>
+          <div class="panel accent-amber">
+            <div class="stat-label">RSI(14) / ATR(14)</div>
+            <div class="stat-value" style="font-size:1.35rem">55.32 · 1.72</div>
+            <div class="stat-sub">動能中性偏多 · 停損距離參考</div>
+          </div>
+          <div class="panel accent-sky">
+            <div class="stat-label">基本面整體偏向</div>
+            <div class="stat-value" style="font-size:1.35rem">neutral</div>
+            <div class="stat-sub">波段部位上限 100%</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Goals -->
+    <section class="slide" data-title="目標假設">
+      <p class="kicker">Goals & Assumptions</p>
+      <h2>目標與假設</h2>
+      <div class="grid grid-2">
+        <div class="panel accent-teal">
+          <h3>標的與週期</h3>
+          <ul class="list">
+            <li><span class="num">01</span><div><strong>元大台灣50（0050）</strong><br />追蹤臺灣50；走勢高度連動台積電（權重約 58–61%）</div></li>
+            <li><span class="num">02</span><div><strong>日／週線波段進出為主</strong><br />另設中長期分批加碼規則</div></li>
+          </ul>
+        </div>
+        <div class="panel accent-amber">
+          <h3>產出與風險</h3>
+          <ul class="list">
+            <li><span class="num">03</span><div><strong>報告 + Canvas + Python</strong><br />分析報告、儀表板、篩選／回測腳本</div></li>
+            <li><span class="num">04</span><div><strong>最大可接受回撤約 15%</strong><br />停損參考約 1.5×ATR，部位需對齊帳戶風險</div></li>
+          </ul>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:1rem">
+        <div class="stat-label">系統一句話</div>
+        <div style="font-size:1.15rem; line-height:1.55; margin-top:0.35rem">
+          基本面決定「能不能加碼」，技術狀態決定「能不能做波段」，價位表決定「在哪裡買／賣／停」。
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Architecture -->
+    <section class="slide" data-title="系統架構">
+      <p class="kicker">Architecture</p>
+      <h2>系統架構</h2>
+      <div class="flow">
+        <div class="flow-node">
+          <div class="layer">資料層</div>
+          <strong>TWSE / yfinance</strong>
+          <div class="stat-sub" style="margin-top:0.4rem">日K、量能、還原權息</div>
+          <div class="stat-sub">元大 ETF 基本面</div>
+        </div>
+        <div class="flow-arrow" aria-hidden="true">→</div>
+        <div class="flow-node">
+          <div class="layer">分析層</div>
+          <strong>Python Engine</strong>
+          <div class="stat-sub" style="margin-top:0.4rem">基本面濾網</div>
+          <div class="stat-sub">技術訊號／區間</div>
+          <div class="stat-sub">簡易回測</div>
+        </div>
+        <div class="flow-arrow" aria-hidden="true">→</div>
+        <div class="flow-node">
+          <div class="layer">產出層</div>
+          <strong>Reports & UI</strong>
+          <div class="stat-sub" style="margin-top:0.4rem">Markdown 報告</div>
+          <div class="stat-sub">Canvas 儀表板</div>
+          <div class="stat-sub">訊號 CSV / JSON</div>
+        </div>
+      </div>
+      <div class="grid grid-3" style="margin-top:1.1rem">
+        <div class="panel">
+          <div class="stat-label">一鍵更新</div>
+          <div class="stat-value" style="font-size:1.25rem">run_analysis</div>
+          <div class="stat-sub">抓資料 → 指標 → 報告 → 回測</div>
+        </div>
+        <div class="panel">
+          <div class="stat-label">資料優先序</div>
+          <div class="stat-value" style="font-size:1.25rem">TWSE → yf</div>
+          <div class="stat-sub">基本面以元大官網為準並註日期</div>
+        </div>
+        <div class="panel">
+          <div class="stat-label">避免過擬合</div>
+          <div class="stat-value" style="font-size:1.25rem">固定參數</div>
+          <div class="stat-sub">不做過度參數優化</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Fundamentals -->
+    <section class="slide" data-title="基本面濾網">
+      <p class="kicker">Fundamentals</p>
+      <h2>基本面環境濾網</h2>
+      <p class="lead" style="margin:0 0 1rem; font-size:0.95rem">決定中長期加碼／觀望／減碼偏向，不單獨觸發當日買賣。</p>
+      <div class="grid grid-4">
+        <div class="panel accent-sky">
+          <div class="stat-label">加權 P/E</div>
+          <div class="stat-value">29.15</div>
+          <div class="stat-sub"><span class="badge neutral">neutral</span></div>
+        </div>
+        <div class="panel accent-amber">
+          <div class="stat-label">年化波動</div>
+          <div class="stat-value">28.5%</div>
+          <div class="stat-sub"><span class="badge warn">neutral</span> 接近 30% 警戒</div>
+        </div>
+        <div class="panel">
+          <div class="stat-label">折溢價</div>
+          <div class="stat-value">n/a</div>
+          <div class="stat-sub"><span class="badge neutral">neutral</span></div>
+        </div>
+        <div class="panel accent-teal">
+          <div class="stat-label">台積電權重</div>
+          <div class="stat-value">60%</div>
+          <div class="stat-sub">需同步看 2330 趨勢</div>
+        </div>
+      </div>
+      <div class="two-col" style="margin-top:1rem">
+        <div class="panel">
+          <h3>濾網規則（摘要）</h3>
+          <div class="metric-mini"><span>P/E &lt; 3年 60% 分位</span><b>積極加碼</b></div>
+          <div class="metric-mini"><span>P/E &gt; 80% 分位</span><b>縮小波段</b></div>
+          <div class="metric-mini"><span>波動 &gt; 30%</span><b>部位上限 70%</b></div>
+          <div class="metric-mini"><span>溢價 &gt; 0.5%</span><b>避免追價</b></div>
+        </div>
+        <div class="panel accent-teal">
+          <h3>中長期加碼規則</h3>
+          <ul class="list">
+            <li><span class="num">50%</span><div><strong>無條件定投</strong> — 每月固定金額必投</div></li>
+            <li><span class="num">50%</span><div><strong>逢低分批</strong> — 僅在 Zone A/B/C 或基本面偏多時投入 2–3 批</div></li>
+            <li><span class="num">!</span><div><strong>defensive 時</strong> — 暫停逢低加碼的另 50%</div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Technical -->
+    <section class="slide" data-title="技術參數">
+      <p class="kicker">Technical Framework</p>
+      <h2>技術面參數</h2>
+      <div class="grid grid-3">
+        <div class="panel">
+          <h3>趨勢</h3>
+          <div class="metric-mini"><span>MA</span><b>20 / 60 / 120</b></div>
+          <div class="metric-mini"><span>濾網</span><b>MA20 &gt; MA60</b></div>
+          <div class="metric-mini"><span>週線</span><b>收盤 &gt; 週 MA20</b></div>
+        </div>
+        <div class="panel">
+          <h3>動能／超買超賣</h3>
+          <div class="metric-mini"><span>MACD</span><b>12, 26, 9</b></div>
+          <div class="metric-mini"><span>RSI</span><b>14（30/70）</b></div>
+          <div class="metric-mini"><span>強勢多頭</span><b>RSI 40/80</b></div>
+        </div>
+        <div class="panel">
+          <h3>波動／量能</h3>
+          <div class="metric-mini"><span>布林</span><b>20, 2σ</b></div>
+          <div class="metric-mini"><span>ATR</span><b>14</b></div>
+          <div class="metric-mini"><span>突破量</span><b>≥ 1.2× 均量</b></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:1rem">
+        <h3>今日讀數</h3>
+        <div class="grid grid-4" style="margin-top:0.5rem">
+          <div>
+            <div class="stat-label">MACD / Signal / Hist</div>
+            <div class="stat-value" style="font-size:1.2rem">0.99 / 1.17 / -0.17</div>
+          </div>
+          <div>
+            <div class="stat-label">布林 下 / 中 / 上</div>
+            <div class="stat-value" style="font-size:1.2rem">103.2 / 106.9 / 110.6</div>
+          </div>
+          <div>
+            <div class="stat-label">量能比</div>
+            <div class="stat-value" style="font-size:1.2rem">0.79×</div>
+          </div>
+          <div>
+            <div class="stat-label">部位上限</div>
+            <div class="stat-value" style="font-size:1.2rem">100%</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Trend states -->
+    <section class="slide" data-title="趨勢狀態">
+      <p class="kicker">Trend State Machine</p>
+      <h2>趨勢狀態機</h2>
+      <div class="states">
+        <div class="state-card active-state">
+          <div class="code" style="color:var(--teal)">StrongUp</div>
+          <div style="color:var(--muted); font-size:0.88rem; line-height:1.5">
+            收盤 &gt; MA20 &gt; MA60，且週線 &gt; 週 MA20。<br /><strong style="color:var(--ink)">只做多、回檔買</strong>
+          </div>
+          <div style="margin-top:0.7rem"><span class="badge ok">今日狀態</span></div>
+        </div>
+        <div class="state-card">
+          <div class="code" style="color:var(--sky)">Up</div>
+          <div style="color:var(--muted); font-size:0.88rem; line-height:1.5">
+            收盤 &gt; MA60，未滿足 StrongUp。<br /><strong style="color:var(--ink)">可做多、縮小部位</strong>
+          </div>
+        </div>
+        <div class="state-card">
+          <div class="code" style="color:var(--amber)">Range</div>
+          <div style="color:var(--muted); font-size:0.88rem; line-height:1.5">
+            布林中軌震盪、MACD 近零軸。<br /><strong style="color:var(--ink)">高拋低吸、嚴格區間</strong>
+          </div>
+        </div>
+        <div class="state-card">
+          <div class="code" style="color:var(--rose)">Down</div>
+          <div style="color:var(--muted); font-size:0.88rem; line-height:1.5">
+            收盤 &lt; MA60 或週線轉弱。<br /><strong style="color:var(--ink)">波段不做多；僅 50% 定投</strong>
+          </div>
+        </div>
+      </div>
+      <div class="panel accent-teal" style="margin-top:1rem">
+        <div class="stat-label">操作含義（StrongUp）</div>
+        <div style="font-size:1.05rem; margin-top:0.3rem; line-height:1.55">
+          優先等待回檔至 MA20／布林中軌附近；突破買需量能確認。不空手追高。
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Levels -->
+    <section class="slide" data-title="價位表">
+      <p class="kicker">Price Levels</p>
+      <h2>價格區間與買賣點</h2>
+      <div class="level-board">
+        <div class="panel">
+          <h3>價位階梯（依 108.05 推算）</h3>
+          <div class="ladder">
+            <div class="ladder-item pressure">
+              <span class="name">突破買 / 目標2（20日高）</span>
+              <span class="px" style="color:var(--rose)">110.75</span>
+            </div>
+            <div class="ladder-item pressure">
+              <span class="name">近端壓力（布林上軌）</span>
+              <span class="px" style="color:var(--rose)">110.61</span>
+            </div>
+            <div class="ladder-item target">
+              <span class="name">目標1（+1.5 ATR）</span>
+              <span class="px" style="color:var(--amber)">109.50</span>
+            </div>
+            <div class="ladder-item">
+              <span class="name">現價</span>
+              <span class="px" style="color:var(--teal)">108.05</span>
+            </div>
+            <div class="ladder-item">
+              <span class="name">近端支撐 / 回檔買 / Zone A</span>
+              <span class="px">106.92</span>
+            </div>
+            <div class="ladder-item stop">
+              <span class="name">硬停損參考（−1.5 ATR）</span>
+              <span class="px" style="color:var(--rose)">104.34</span>
+            </div>
+            <div class="ladder-item">
+              <span class="name">中期支撐 / Zone B</span>
+              <span class="px">103.90 / 103.23</span>
+            </div>
+          </div>
+        </div>
+        <div class="grid" style="gap:0.75rem; align-content:start">
+          <div class="panel accent-teal">
+            <h3>波段買點</h3>
+            <ul class="list">
+              <li><span class="num">回</span><div>觸及 MA20／中軌下方，RSI 回落 40–50 後向上，MACD 未深死叉</div></li>
+              <li><span class="num">破</span><div>收盤破 20 日高且量 ≥ 1.2×，隔日不破突破 K 低點</div></li>
+            </ul>
+          </div>
+          <div class="panel accent-amber">
+            <h3>出場紀律</h3>
+            <ul class="list">
+              <li><span class="num">50%</span><div>目標1 先出</div></li>
+              <li><span class="num">30%</span><div>目標2 再出</div></li>
+              <li><span class="num">20%</span><div>MA20／ATR 移動停利</div></li>
+            </ul>
+          </div>
+          <div class="panel accent-rose">
+            <h3>硬停損</h3>
+            <div class="stat-sub" style="line-height:1.55; color:var(--ink)">
+              進場 −1.5×ATR，或收盤跌破 MA60（Up／StrongUp 失效）
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. Zones -->
+    <section class="slide" data-title="加碼區">
+      <p class="kicker">DCA Zones</p>
+      <h2>中長期加碼區</h2>
+      <p class="lead" style="margin:0 0 1rem; font-size:0.95rem">與波段分開記帳。Zone C 目前 <span class="badge warn">inactive</span></p>
+      <div class="grid grid-3">
+        <div class="panel accent-teal">
+          <div class="stat-label">Zone A</div>
+          <div class="stat-value">106.92</div>
+          <div class="stat-sub">跌破 MA20、仍在 MA60 上方 → 加碼 1 批</div>
+          <div class="spark" aria-hidden="true">
+            <span style="height:35%"></span><span style="height:42%"></span><span style="height:50%"></span>
+            <span style="height:58%"></span><span style="height:70%"></span><span style="height:78%"></span>
+          </div>
+        </div>
+        <div class="panel accent-amber">
+          <div class="stat-label">Zone B</div>
+          <div class="stat-value">103.23</div>
+          <div class="stat-sub">接近 MA60 或布林下軌 → 再加碼 1 批</div>
+          <div class="spark" aria-hidden="true">
+            <span style="height:55%"></span><span style="height:48%"></span><span style="height:40%"></span>
+            <span style="height:46%"></span><span style="height:38%"></span><span style="height:32%"></span>
+          </div>
+        </div>
+        <div class="panel accent-rose">
+          <div class="stat-label">Zone C</div>
+          <div class="stat-value" style="font-size:1.6rem">觸發條件</div>
+          <div class="stat-sub">單月跌幅 &gt; 8% 或 RSI &lt; 30 → 最後一批（仍願意持有大型權值時）</div>
+          <div style="margin-top:0.9rem"><span class="badge warn">目前 inactive</span></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:1rem">
+        <div class="stat-label">資金配置示意</div>
+        <div class="grid grid-2" style="margin-top:0.6rem; align-items:center">
+          <div>
+            <div class="metric-mini"><span>每月無條件定投</span><b>50%</b></div>
+            <div class="metric-mini"><span>逢低 Zone 分批</span><b>50%</b></div>
+          </div>
+          <div>
+            <div style="display:flex; height:1.1rem; border-radius:999px; overflow:hidden; border:1px solid var(--line)">
+              <div style="flex:1; background:var(--teal)"></div>
+              <div style="flex:1; background:var(--amber)"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:0.45rem; color:var(--muted); font-size:0.8rem">
+              <span>定投</span><span>逢低</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. Backtest -->
+    <section class="slide" data-title="回測摘要">
+      <p class="kicker">Backtest</p>
+      <h2>簡易回測摘要</h2>
+      <p class="lead" style="margin:0 0 1rem; font-size:0.95rem">
+        規則：波段回檔買 + MA20／ATR 出場，僅 StrongUp／Up。區間 2021-12-14 → 2026-09-17（1155 交易日）
+      </p>
+      <div class="compare">
+        <div class="panel accent-rose">
+          <div class="stat-label">波段策略</div>
+          <div class="stat-value" style="color:var(--rose)">−4.32%</div>
+          <div class="stat-sub">年化 −0.96% · 最大回撤 −8.02%</div>
+          <div class="bar-track"><div class="bar-fill strategy"></div></div>
+          <div class="metric-mini" style="margin-top:0.8rem"><span>交易次數</span><b>15</b></div>
+          <div class="metric-mini"><span>勝率</span><b>26.67%</b></div>
+          <div class="metric-mini"><span>盈虧比 PF</span><b>0.575</b></div>
+        </div>
+        <div class="panel accent-teal">
+          <div class="stat-label">買進持有</div>
+          <div class="stat-value" style="color:var(--teal)">+256.7%</div>
+          <div class="stat-sub">年化 +31.98% · 最大回撤 −33.83%</div>
+          <div class="bar-track"><div class="bar-fill buyhold"></div></div>
+          <div class="metric-mini" style="margin-top:0.8rem"><span>風格</span><b>長抱權值</b></div>
+          <div class="metric-mini"><span>回撤代價</span><b>明顯較大</b></div>
+          <div class="metric-mini"><span>對照用途</span><b>基準線</b></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:1rem">
+        <div style="font-size:0.95rem; line-height:1.6; color:var(--muted)">
+          <strong style="color:var(--ink)">解讀：</strong>
+          此波段規則在樣本期落後買進持有，但回撤較小（−8% vs −34%）。適合當作「風險控管模組」，而非追求超額報酬的主策略；中長期部位仍以定投＋加碼區為核心。
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. Playbook -->
+    <section class="slide" data-title="操作手冊">
+      <p class="kicker">Playbook</p>
+      <h2>今日操作手冊</h2>
+      <div class="grid grid-2">
+        <div class="panel accent-teal">
+          <h3>波段（允許 full_swing）</h3>
+          <ul class="list">
+            <li><span class="num">1</span><div>優先觀察 <strong>106.92</strong> 回檔買區（MA20）</div></li>
+            <li><span class="num">2</span><div>若追突破，關注 <strong>110.75</strong> + 量能 ≥ 1.2×</div></li>
+            <li><span class="num">3</span><div>目標階梯：<strong>109.50</strong> → <strong>110.75</strong></div></li>
+            <li><span class="num">4</span><div>停損參考 <strong>104.34</strong>；破 MA60 則失效</div></li>
+          </ul>
+        </div>
+        <div class="panel accent-amber">
+          <h3>中長期（bias = neutral）</h3>
+          <ul class="list">
+            <li><span class="num">1</span><div>維持每月 <strong>50%</strong> 無條件定投</div></li>
+            <li><span class="num">2</span><div>另 50% 待命：Zone A <strong>106.92</strong>、Zone B <strong>103.23</strong></div></li>
+            <li><span class="num">3</span><div>波動 28.5% 接近警戒，部位不必加槓</div></li>
+            <li><span class="num">4</span><div>同步盯 2330：權重約 60%</div></li>
+          </ul>
+        </div>
+      </div>
+      <div class="meta-row">
+        <span class="chip">更新指令 <strong>python -m src.run_analysis</strong></span>
+        <span class="chip">報告 <strong>reports/0050_latest.md</strong></span>
+      </div>
+    </section>
+
+    <!-- 12. Risks -->
+    <section class="slide" data-title="風險">
+      <p class="kicker">Risks & Limits</p>
+      <h2>風險與限制</h2>
+      <div class="grid grid-2">
+        <div class="panel accent-rose">
+          <h3>標的特性</h3>
+          <ul class="list">
+            <li><span class="num">!</span><div>0050 ≈ 大型權值＋高 TSMC 暴露，非「低波動存股」保證</div></li>
+            <li><span class="num">!</span><div>ETF 估值為持股加權試算，解讀不同於單一公司本益比</div></li>
+          </ul>
+        </div>
+        <div class="panel accent-amber">
+          <h3>資料與執行</h3>
+          <ul class="list">
+            <li><span class="num">!</span><div>公開 API 可能延遲／缺值，下單前核對券商與元大報價</div></li>
+            <li><span class="num">!</span><div>回測未含完整成本、滑價與分割特例；參數固定、不做曲線擬合</div></li>
+          </ul>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:1rem; text-align:center; padding:1.6rem">
+        <div class="title-brand" style="margin-bottom:0.6rem">DISCLAIMER</div>
+        <div style="font-size:1.15rem; line-height:1.6; max-width:36rem; margin:0 auto">
+          本簡報僅供研究參考，不構成投資建議。<br />實盤交易請自行評估風險並承擔結果。
+        </div>
+        <div class="meta-row" style="justify-content:center; margin-top:1.2rem">
+          <span class="chip">0050</span>
+          <span class="chip">2026-09-17</span>
+          <span class="chip">StrongUp · 108.05</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer-nav">
+    <button class="nav-btn" id="prevBtn" type="button" aria-label="上一頁">← 上一頁</button>
+    <div class="dots" id="dots" role="tablist" aria-label="投影片導覽"></div>
+    <div style="display:flex; align-items:center; gap:0.75rem">
+      <span class="slide-no" id="slideNo">1 / 12</span>
+      <button class="nav-btn" id="nextBtn" type="button" aria-label="下一頁">下一頁 →</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      const dotsWrap = document.getElementById("dots");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const slideNo = document.getElementById("slideNo");
+      const progress = document.getElementById("progress");
+      let index = 0;
+
+      slides.forEach((_, i) => {
+        const b = document.createElement("button");
+        b.className = "dot" + (i === 0 ? " active" : "");
+        b.type = "button";
+        b.setAttribute("aria-label", "前往第 " + (i + 1) + " 頁");
+        b.addEventListener("click", () => go(i));
+        dotsWrap.appendChild(b);
+      });
+
+      const dots = Array.from(dotsWrap.querySelectorAll(".dot"));
+
+      function render() {
+        slides.forEach((s, i) => s.classList.toggle("active", i === index));
+        dots.forEach((d, i) => d.classList.toggle("active", i === index));
+        slideNo.textContent = (index + 1) + " / " + slides.length;
+        progress.style.width = ((index + 1) / slides.length * 100) + "%";
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === slides.length - 1;
+        slides[index].scrollTop = 0;
+      }
+
+      function go(n) {
+        if (n < 0 || n >= slides.length) return;
+        index = n;
+        render();
+      }
+
+      prevBtn.addEventListener("click", () => go(index - 1));
+      nextBtn.addEventListener("click", () => go(index + 1));
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
+          e.preventDefault();
+          go(index + 1);
+        } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+          e.preventDefault();
+          go(index - 1);
+        } else if (e.key === "Home") {
+          go(0);
+        } else if (e.key === "End") {
+          go(slides.length - 1);
+        }
+      });
+
+      let touchX = null;
+      document.addEventListener("touchstart", (e) => {
+        touchX = e.changedTouches[0].screenX;
+      }, { passive: true });
+      document.addEventListener("touchend", (e) => {
+        if (touchX == null) return;
+        const dx = e.changedTouches[0].screenX - touchX;
+        if (Math.abs(dx) > 50) go(index + (dx < 0 ? 1 : -1));
+        touchX = null;
+      }, { passive: true });
+
+      render();
+    })();
+  </script>
+</body>
+</html>

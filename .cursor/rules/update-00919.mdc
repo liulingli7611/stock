@@ -1,0 +1,12 @@
+---
+description: When user says 更新00919, run 00919 strategy analysis
+alwaysApply: true
+---
+
+# 更新 00919
+
+When the user says **更新00919** (or close variants like「更新 00919」「幫我更新00919」):
+
+1. Immediately run `/Users/lily/Documents/Stock/.venv/bin/python -m src.run_00919_analysis` from the Stock project (or `./update` if they want both 0050+00919).
+2. Summarize key outputs briefly (price, trend, report/deck/canvas paths).
+3. Do not edit plan files or recreate the project unless asked.

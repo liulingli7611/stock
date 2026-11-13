@@ -1,0 +1,14 @@
+---
+description: When user says 更新0050, run ./update immediately
+alwaysApply: true
+---
+
+# 更新 0050
+
+When the user says **更新0050** (or close variants like「更新 0050」「幫我更新0050」):
+
+1. Immediately run `/Users/lily/Documents/Stock/update` (do not ask for confirmation).
+2. Summarize the key outputs briefly (price, trend, report path).
+3. Do not edit the plan file or recreate the project unless asked.
+
+This is the only update command needed; it handles venv, analysis, and Canvas sync.

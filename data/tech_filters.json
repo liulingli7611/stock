@@ -1,0 +1,16 @@
+{
+  "enabled": [
+    "rsi",
+    "macd_cross",
+    "macd_hist",
+    "kd",
+    "ma_align_s",
+    "ma_align_m",
+    "price_ma",
+    "bias_ma20",
+    "bb_mid",
+    "volume",
+    "breakout_20",
+    "atr_calm"
+  ]
+}

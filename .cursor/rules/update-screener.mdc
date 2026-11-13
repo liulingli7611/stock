@@ -1,0 +1,12 @@
+---
+description: When user says 更新選股, run constituent screener
+alwaysApply: true
+---
+
+# 更新選股
+
+When the user says **更新選股** (or close variants like「更新選股器」「跑選股」「幫我更新選股」):
+
+1. Immediately run `/Users/lily/Documents/Stock/.venv/bin/python -m src.run_screener` from the Stock project.
+2. Summarize key outputs briefly (long/short counts, report/deck/CSV paths).
+3. Do not edit the plan file or recreate the project unless asked.

@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>選股器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #e9eee8;
+  --bg-2: #dfe6dd;
+  --panel: #f5f7f3;
+  --ink: #152019;
+  --muted: #5a6a5f;
+  --line: #c5d0c4;
+  --pine: #1a6b4f;
+  --pine-soft: rgba(26, 107, 79, 0.12);
+  --copper: #b85a2a;
+  --copper-soft: rgba(184, 90, 42, 0.12);
+  --slate: #3d4f5c;
+  --warn: #9a6b16;
+  --radius: 14px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow: 0 12px 40px rgba(21, 32, 25, 0.08);
+  --font-display: "Fraunces", "Noto Sans TC", serif;
+  --font-ui: "IBM Plex Sans", "Noto Sans TC", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(26,107,79,0.10), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 10%, rgba(184,90,42,0.08), transparent 50%),
+    linear-gradient(160deg, var(--bg), var(--bg-2));
+  background-attachment: fixed;
+}
+.app {
+  width: max-content;
+  min-width: min(100%, 1280px);
+  max-width: none;
+  margin: 0 auto;
+  padding: 1.25rem 1.25rem 3rem;
+  display: grid;
+  grid-template-columns: minmax(280px, 320px) max-content;
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .app { grid-template-columns: 1fr; padding: 1rem 0.85rem 2.5rem; }
+}
+
+/* Header / process */
+.masthead {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 1rem;
+  animation: rise 0.55s var(--ease) both;
+}
+.brand-row {
+  display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.75rem;
+}
+.brand h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.85rem, 4vw, 2.55rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.brand .tag {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 0.35rem;
+  max-width: 36rem;
+  line-height: 1.5;
+}
+.meta-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(245,247,243,0.8);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.meta-chip strong { color: var(--ink); font-weight: 600; }
+.brand-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; }
+.admin-link {
+  display: inline-flex; align-items: center;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(245,247,243,0.8);
+  font-size: 0.78rem;
+  color: var(--pine);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.admin-link:hover { border-color: var(--pine); }
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+@media (max-width: 720px) { .steps { grid-template-columns: 1fr 1fr; } }
+.step {
+  position: relative;
+  padding: 0.85rem 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  overflow: hidden;
+  transition: transform 0.35s var(--ease), border-color 0.35s var(--ease);
+}
+.step:hover { transform: translateY(-2px); border-color: var(--pine); }
+.step .n {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  color: var(--pine);
+  line-height: 1;
+}
+.step .t { font-weight: 600; font-size: 0.88rem; margin-top: 0.35rem; }
+.step .d { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; line-height: 1.35; }
+.step::after {
+  content: "";
+  position: absolute; left: 0; bottom: 0; height: 3px; width: 0;
+  background: var(--pine);
+  transition: width 0.5s var(--ease);
+}
+.step.on::after { width: 100%; }
+
+/* Sidebar params */
+.side {
+  position: sticky; top: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 1rem 1rem 1.1rem;
+  animation: rise 0.65s var(--ease) 0.05s both;
+  max-height: calc(100vh - 1.5rem);
+  overflow: auto;
+}
+@media (max-width: 960px) {
+  .side { position: relative; top: 0; max-height: none; }
+}
+.side h2 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  margin-bottom: 0.35rem;
+}
+.side .hint { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.9rem; line-height: 1.4; }
+.group { margin-bottom: 1rem; padding-bottom: 0.85rem; border-bottom: 1px dashed var(--line); }
+.group:last-of-type { border-bottom: 0; }
+.group .legend {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--slate);
+  font-weight: 600;
+  margin-bottom: 0.55rem;
+}
+.field { margin-bottom: 0.65rem; }
+.field label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 0.8rem; color: var(--muted); margin-bottom: 0.28rem;
+}
+.field label b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.field input[type="range"] {
+  width: 100%; accent-color: var(--pine); cursor: pointer;
+}
+.field input[type="number"], .field select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+  background: #fff;
+  color: var(--ink);
+}
+.chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+#etfChips { margin-top: 0.45rem; }
+.th-check, td.check {
+  width: 2.6rem;
+  text-align: center;
+  padding-left: 0.75rem;
+  padding-right: 0.3rem;
+}
+.th-check { cursor: default; }
+td.check input {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+  accent-color: var(--pine);
+  cursor: pointer;
+}
+.name-cell { display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; }
+.del-x {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+  cursor: pointer;
+  opacity: 0;
+}
+tr.row:hover .del-x,
+.del-x:focus {
+  opacity: 1;
+  color: var(--copper);
+}
+.chips .meta { font-size: 0.75rem; color: var(--muted); }
+.chip-tog {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--muted);
+  transition: 0.2s var(--ease);
+}
+.chip-tog.on {
+  background: var(--pine-soft);
+  border-color: var(--pine);
+  color: var(--pine);
+  font-weight: 600;
+}
+.chip-static {
+  border: 1px solid var(--pine);
+  background: var(--pine-soft);
+  color: var(--pine);
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.actions { display: grid; gap: 0.45rem; margin-top: 0.35rem; }
+.btn {
+  border: 0; border-radius: 11px; padding: 0.65rem 0.85rem;
+  font: inherit; font-weight: 600; cursor: pointer;
+  transition: transform 0.2s var(--ease), opacity 0.2s;
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--pine); color: #f4faf7; }
+.btn-primary:hover { opacity: 0.92; }
+.btn-ghost {
+  background: transparent; border: 1px solid var(--line); color: var(--ink);
+}
+.btn-ghost:hover { border-color: var(--copper); color: var(--copper); }
+.cli {
+  margin-top: 0.65rem;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--muted);
+  background: #eef2eb;
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Main */
+.main { animation: rise 0.7s var(--ease) 0.1s both; min-width: max-content; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 0.9rem;
+}
+@media (max-width: 720px) { .stats { grid-template-columns: 1fr 1fr; } }
+.stat {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 0.75rem 0.85rem;
+}
+.stat .l { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.04em; }
+.stat .v {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  margin-top: 0.15rem;
+}
+.stat.long .v { color: var(--pine); }
+.stat.short .v { color: var(--copper); }
+
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+  margin-bottom: 0.75rem;
+}
+.tabs { display: flex; flex-wrap: wrap; gap: 0.35rem; flex: 1; }
+.tab {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  color: var(--muted);
+}
+.tab.on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #f3f6f2;
+  font-weight: 600;
+}
+.search {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font: inherit;
+  min-width: 11rem;
+  background: #fff;
+}
+.stock-form {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.stock-form input {
+  width: 6.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  font: inherit;
+  background: #fff;
+}
+.stock-msg {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.stock-msg.bad { color: var(--copper); }
+.stock-msg.ok { color: var(--pine); }
+.name-acts { display: flex; gap: 0.3rem; flex: none; }
+.del-btn { color: var(--copper); }
+
+.board {
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  width: max-content;
+  min-width: 100%;
+  overflow: visible;
+}
+.table-wrap { overflow: auto; max-height: min(68vh, 820px); }
+table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+th, td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+th:last-child, td:last-child { padding-right: 1.15rem; }
+th {
+  position: sticky; top: 0; z-index: 1;
+  background: #eef2eb;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  user-select: none;
+}
+th:hover { color: var(--ink); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.row { cursor: pointer; transition: background 0.2s; }
+tr.row:hover { background: rgba(26,107,79,0.06); }
+tr.row.open { background: var(--pine-soft); }
+.badge {
+  display: inline-block;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge.long { background: var(--pine-soft); color: var(--pine); }
+.badge.short { background: var(--copper-soft); color: var(--copper); }
+.badge.watch { background: rgba(154,107,22,0.12); color: var(--warn); }
+.badge.skip { background: #e8ebe6; color: var(--muted); }
+.trend {
+  font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 6px;
+  border: 1px solid var(--line); color: var(--slate);
+}
+.detail {
+  display: none;
+  background: #eef3ec;
+  animation: rise 0.35s var(--ease);
+}
+.detail.open { display: table-row; }
+.detail td { padding: 0.85rem 0.9rem 1rem; white-space: normal; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.55rem;
+}
+.detail-grid .box {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  background: #fff;
+}
+.detail-grid .box span { display: block; font-size: 0.7rem; color: var(--muted); }
+.detail-grid .box strong {
+  display: block; margin-top: 0.2rem;
+  font-family: var(--font-display); font-size: 1.05rem;
+}
+.detail-grid .box.ma-box { grid-column: span 2; min-width: 0; }
+.ma-lines {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.28rem 0.7rem;
+  margin-top: 0.35rem;
+}
+.ma-lines div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.45rem;
+  align-items: baseline;
+}
+.ma-lines em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.ma-lines b {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 650;
+}
+.empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.foot {
+  margin-top: 0.85rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="masthead">
+    <div class="brand-row">
+      <div class="brand">
+        <h1>選股器</h1>
+        <p class="tag">以 0050、00919、00878、00403A、009828、0052 成份為宇宙。009828 只納入台股代碼。調整基本面與 ATR 參數，即時重算作多／作空進出場參考。</p>
+      </div>
+      <div class="brand-actions">
+        <div class="meta-chip">資料日 <strong id="asOf">—</strong></div>
+        <a class="admin-link" id="adminLink" href="/admin/login" hidden>後台</a>
+        <button type="button" class="admin-link" id="btnReload" hidden>重新載入資料</button>
+      </div>
+    </div>
+    <div class="steps" id="steps">
+      <div class="step on" data-step="1"><div class="n">01</div><div class="t">成份宇宙</div><div class="d">自動擷取持股並去重</div></div>
+      <div class="step on" data-step="2"><div class="n">02</div><div class="t">基本面濾網</div><div class="d">殖利率 · 本益比 · 相對中位</div></div>
+      <div class="step on" data-step="3"><div class="n">03</div><div class="t">技術區間</div><div class="d">均線進場 · ATR 停損目標</div></div>
+      <div class="step on" data-step="4"><div class="n">04</div><div class="t">多空標籤</div><div class="d">long / short / watch</div></div>
+    </div>
+  </header>
+
+  <aside class="side" id="paramsPanel">
+    <h2>參數設定</h2>
+    <p class="hint">調整後立即套用到目前掃描結果。可在表格上方新增或刪除個股；刪除後下次更新也不會自動加回。</p>
+
+    <div class="group">
+      <div class="legend">宇宙</div>
+      <div class="field">
+        <label>來源 ETF</label>
+        <select id="universe">
+          <option value="both">全部成份 ETF</option>
+          <option value="0050">僅 0050</option>
+          <option value="00919">僅 00919</option>
+          <option value="00878">僅 00878</option>
+          <option value="00403A">僅 00403A</option>
+          <option value="009828">僅 009828</option>
+          <option value="0052">僅 0052</option>
+          <option value="all">全部（含自選）</option>
+          <option value="custom">僅自選</option>
+        </select>
+        <div class="chips" id="etfChips"></div>
+      </div>
+      <div class="field">
+        <label>分類</label>
+        <div class="chips" id="watchChips"></div>
+      </div>
+      <div class="field" id="catField" hidden>
+        <label>自訂分類</label>
+        <div class="chips" id="catChips"></div>
+      </div>
+      <div class="field">
+        <label>最低權重 % <b id="minWeightVal">0</b></label>
+        <input type="range" id="minWeight" min="0" max="10" step="0.1" value="0"/>
+      </div>
+      <div class="field">
+        <label>各向最多列示 <b id="topNVal">20</b></label>
+        <input type="range" id="topN" min="5" max="40" step="1" value="20"/>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="legend">基本面</div>
+      <div class="field">
+        <label>作多最低殖利率 <b id="minYieldVal">3.0%</b></label>
+        <input type="range" id="minYield" min="0" max="10" step="0.1" value="3"/>
+      </div>
+      <div class="field">
+        <label>作多最高 PE <b id="maxPeVal">25</b></label>
+        <input type="range" id="maxPe" min="8" max="60" step="1" value="25"/>
+      </div>
+      <div class="field">
+        <label>作空最低 PE <b id="minPeShortVal">35</b></label>
+        <input type="range" id="minPeShort" min="15" max="80" step="1" value="35"/>
+      </div>
+      <div class="field">
+        <label>低估：PE ≤ 中位 × <b id="peMedMaxVal">0.90</b></label>
+        <input type="range" id="peMedMax" min="0.5" max="1.2" step="0.05" value="0.9"/>
+      </div>
+      <div class="field">
+        <label>高估：PE ≥ 中位 × <b id="peMedMinShortVal">1.20</b></label>
+        <input type="range" id="peMedMinShort" min="0.8" max="2" step="0.05" value="1.2"/>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="legend">作多參數</div>
+      <p class="hint">回檔買。停損 1.5 ATR，第一目標 2.5 ATR，報酬大於風險。RSI 60 以下才做，不追過熱。</p>
+      <div class="field">
+        <label>停損 ATR × <b id="atrStopVal">1.5</b></label>
+        <input type="range" id="atrStop" min="0.5" max="3" step="0.1" value="1.5"/>
+      </div>
+      <div class="field">
+        <label>目標1 ATR × <b id="atrT1Val">2.5</b></label>
+        <input type="range" id="atrT1" min="0.5" max="5" step="0.1" value="2.5"/>
+      </div>
+      <div class="field">
+        <label>目標2 ATR × <b id="atrT2Val">4.0</b></label>
+        <input type="range" id="atrT2" min="1" max="6" step="0.1" value="4"/>
+      </div>
+      <div class="field">
+        <label>RSI ≤ <b id="rsiLongVal">60</b></label>
+        <input type="range" id="rsiLong" min="30" max="70" step="1" value="60"/>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="legend">作空參數</div>
+      <p class="hint">偏弱時逢高。停損收緊到 1.2 ATR，目標仍比停損遠。RSI 60 以上才做。</p>
+      <div class="field">
+        <label>停損 ATR × <b id="atrStopShortVal">1.2</b></label>
+        <input type="range" id="atrStopShort" min="0.5" max="3" step="0.1" value="1.2"/>
+      </div>
+      <div class="field">
+        <label>目標1 ATR × <b id="atrT1ShortVal">2.0</b></label>
+        <input type="range" id="atrT1Short" min="0.5" max="5" step="0.1" value="2"/>
+      </div>
+      <div class="field">
+        <label>目標2 ATR × <b id="atrT2ShortVal">3.0</b></label>
+        <input type="range" id="atrT2Short" min="1" max="6" step="0.1" value="3"/>
+      </div>
+      <div class="field">
+        <label>RSI ≥ <b id="rsiShortVal">60</b></label>
+        <input type="range" id="rsiShort" min="45" max="85" step="1" value="60"/>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="legend">後台技術濾網</div>
+      <p class="hint">平日 08:30 開盤前依這些條件篩選。同一邊過半數成立，才列入做多或做空。</p>
+      <div class="chips" id="techOn"></div>
+    </div>
+
+    <div class="group">
+      <div class="legend">趨勢濾網</div>
+      <div class="field">
+        <label>作多允許</label>
+        <div class="chips" id="longTrends"></div>
+      </div>
+      <div class="field">
+        <label>作空允許</label>
+        <div class="chips" id="shortTrends"></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-primary" id="btnApply">套用參數</button>
+      <button type="button" class="btn btn-ghost" id="btnReset">還原掃描預設</button>
+      <button type="button" class="btn btn-ghost" id="btnCopy">複製重跑指令</button>
+    </div>
+    <div class="cli" id="cliBox">python -m src.run_screener</div>
+  </aside>
+
+  <main class="main">
+    <div class="stats">
+      <div class="stat"><div class="l">掃描檔數</div><div class="v" id="cUniverse">0</div></div>
+      <div class="stat long"><div class="l">作多候選</div><div class="v" id="cLong">0</div></div>
+      <div class="stat short"><div class="l">作空候選</div><div class="v" id="cShort">0</div></div>
+      <div class="stat"><div class="l">觀察</div><div class="v" id="cWatch">0</div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="tabs" id="tabs">
+        <button type="button" class="tab" data-tab="long">作多</button>
+        <button type="button" class="tab" data-tab="short">作空</button>
+        <button type="button" class="tab" data-tab="watch">觀察</button>
+        <button type="button" class="tab on" data-tab="all">全部</button>
+      </div>
+      <input class="search" id="q" type="search" placeholder="搜尋代碼或名稱" autocomplete="off"/>
+      <form class="stock-form" id="stockForm">
+        <input id="addTicker" type="text" inputmode="numeric" maxlength="6" placeholder="代碼" autocomplete="off" aria-label="新增股票代碼"/>
+        <button type="submit" class="btn btn-primary" id="btnAddStock">新增個股</button>
+      </form>
+      <p class="stock-msg" id="stockMsg" hidden></p>
+    </div>
+
+    <div class="board">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="th-check">自選</th>
+              <th data-sort="ticker">代碼</th>
+              <th data-sort="name">名稱</th>
+              <th class="num" data-sort="price">價</th>
+              <th data-sort="trend_state">趨勢</th>
+              <th class="num" data-sort="trailing_pe">PE</th>
+              <th class="num" data-sort="dividend_yield">殖利率</th>
+              <th class="num" data-sort="score">分數</th>
+              <th class="num" data-sort="entry">進場</th>
+              <th class="num" data-sort="stop">停損</th>
+              <th class="num" data-sort="target1">目標1</th>
+              <th>標籤</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="empty" id="empty" hidden>此條件下沒有符合的標的，試著放寬殖利率或 PE。</div>
+      </div>
+    </div>
+    <p class="foot" id="disclaimer">研究參考用途，不構成投資建議。</p>
+  </main>
+</div>
+
+<script>
+window.__SCREENER__ = __SCREENER_PAYLOAD__;
+
+(function () {
+  const TRENDS = ["StrongUp", "Up", "Range", "Down"];
+  const LIVE = !!window.__LIVE__;
+  const raw = window.__SCREENER__ || {};
+  let baseRows = Array.isArray(raw.all) ? raw.all.map((r) => ({ ...r })) : [];
+  const baseCfg = { ...(raw.config || {}) };
+  let catalog = raw.catalog || { categories: [], stocks: [] };
+
+  const state = {
+    tab: "all",
+    sortKey: "weight_max",
+    sortDir: "desc",
+    q: "",
+    openTicker: null,
+    longTrends: new Set(baseCfg.long_trends || ["StrongUp", "Up"]),
+    shortTrends: new Set(baseCfg.short_trends || ["Down", "Range"]),
+    catFilter: new Set(),
+    watchOn: false,
+    watch: new Set(),
+    techEnabled: new Set((raw.tech_filters && raw.tech_filters.enabled) || baseCfg.tech_filters || ["rsi"]),
+    techCatalog: (raw.tech_filters && raw.tech_filters.filters) || [],
+  };
+
+  const WATCH_KEY = "screener.watchlist";
+  const $ = (id) => document.getElementById(id);
+
+  function tickerKey(t) {
+    const s = String(t || "").trim();
+    return s.length < 4 ? s.padStart(4, "0") : s;
+  }
+
+  function seedWatch() {
+    const seeded = new Set();
+    const cats = ((catalog && catalog.categories) || []).filter((c) =>
+      c.id === "watchlist" || c.name === "自選" || c.name === "自選股"
+    );
+    const ids = new Set(cats.map((c) => c.id));
+    ((catalog && catalog.stocks) || []).forEach((s) => {
+      if ((s.category_ids || []).some((id) => ids.has(id))) seeded.add(tickerKey(s.ticker));
+    });
+    baseRows.forEach((r) => {
+      const names = r.category_names || [];
+      const rowIds = r.category_ids || [];
+      if (names.includes("自選") || names.includes("自選股") || rowIds.includes("watchlist")) {
+        seeded.add(tickerKey(r.ticker));
+      }
+    });
+    return seeded;
+  }
+
+  function loadWatch() {
+    try {
+      const raw = localStorage.getItem(WATCH_KEY);
+      if (raw !== null) return new Set(JSON.parse(raw).map(tickerKey));
+    } catch (_) { /* keep seed */ }
+    return seedWatch();
+  }
+
+  function saveWatch() {
+    try {
+      localStorage.setItem(WATCH_KEY, JSON.stringify([...state.watch]));
+    } catch (_) { /* private mode */ }
+  }
+
+  function toggleWatch(ticker) {
+    const key = tickerKey(ticker);
+    if (state.watch.has(key)) state.watch.delete(key);
+    else state.watch.add(key);
+    saveWatch();
+    render();
+  }
+
+  state.watch = loadWatch();
+
+  function num(v) {
+    if (v === null || v === undefined || Number.isNaN(Number(v))) return null;
+    return Number(v);
+  }
+
+  function weightTier(row) {
+    const w = num(row.weight_max);
+    if (w === null || w <= 0) return "無成份權重";
+    if (w >= 10) return "核心權重";
+    if (w >= 3) return "高權重";
+    if (w >= 1) return "中權重";
+    return "低權重";
+  }
+
+  const ETF_ORDER = ["0050", "00919", "00878", "00403A", "009828", "0052"];
+
+  function rowWeights(row) {
+    const w = {};
+    const raw = row.weights && typeof row.weights === "object" ? row.weights : {};
+    for (const [code, value] of Object.entries(raw)) {
+      const n = num(value);
+      if (n !== null && n > 0) w[code] = n;
+    }
+    const legacy = { "0050": num(row.weight_0050), "00919": num(row.weight_00919) };
+    for (const [code, n] of Object.entries(legacy)) {
+      if (w[code] == null && n !== null && n > 0) w[code] = n;
+    }
+    return w;
+  }
+
+  function weightShare(row) {
+    const weights = rowWeights(row);
+    const parts = ETF_ORDER.filter((code) => weights[code] > 0).map(
+      (code) => `${code} ${fmt(weights[code])}%`
+    );
+    for (const code of Object.keys(weights)) {
+      if (!ETF_ORDER.includes(code)) parts.push(`${code} ${fmt(weights[code])}%`);
+    }
+    if (!parts.length) {
+      const w = num(row.weight_max);
+      return w !== null && w > 0 ? `${fmt(w)}%` : "—";
+    }
+    return parts.join(" / ");
+  }
+
+  function fmt(v, d = 2) {
+    const n = num(v);
+    return n === null ? "—" : n.toFixed(d);
+  }
+
+  function fmtPct(v) {
+    const n = num(v);
+    return n === null ? "—" : (n * 100).toFixed(2) + "%";
+  }
+
+  function labelText(l) {
+    return ({ long_candidate: "作多", short_candidate: "作空", watch: "觀察", skip: "略過" })[l] || l;
+  }
+
+  function readCfg() {
+    return {
+      universe: $("universe").value,
+      min_weight: Number($("minWeight").value),
+      top_n: Number($("topN").value),
+      min_yield: Number($("minYield").value) / 100,
+      max_pe: Number($("maxPe").value),
+      min_pe_short: Number($("minPeShort").value),
+      pe_vs_median_max: Number($("peMedMax").value),
+      pe_vs_median_min_short: Number($("peMedMinShort").value),
+      atr_stop: Number($("atrStop").value),
+      atr_target1: Number($("atrT1").value),
+      atr_target2: Number($("atrT2").value),
+      atr_stop_short: Number($("atrStopShort").value),
+      atr_target1_short: Number($("atrT1Short").value),
+      atr_target2_short: Number($("atrT2Short").value),
+      rsi_long_max: Number($("rsiLong").value),
+      rsi_short_min: Number($("rsiShort").value),
+      long_trends: [...state.longTrends],
+      short_trends: [...state.shortTrends],
+    };
+  }
+
+  function syncLabels() {
+    $("minWeightVal").textContent = Number($("minWeight").value).toFixed(1);
+    $("topNVal").textContent = $("topN").value;
+    $("minYieldVal").textContent = Number($("minYield").value).toFixed(1) + "%";
+    $("maxPeVal").textContent = $("maxPe").value;
+    $("minPeShortVal").textContent = $("minPeShort").value;
+    $("peMedMaxVal").textContent = Number($("peMedMax").value).toFixed(2);
+    $("peMedMinShortVal").textContent = Number($("peMedMinShort").value).toFixed(2);
+    $("atrStopVal").textContent = Number($("atrStop").value).toFixed(1);
+    $("atrT1Val").textContent = Number($("atrT1").value).toFixed(1);
+    $("atrT2Val").textContent = Number($("atrT2").value).toFixed(1);
+    $("atrStopShortVal").textContent = Number($("atrStopShort").value).toFixed(1);
+    $("atrT1ShortVal").textContent = Number($("atrT1Short").value).toFixed(1);
+    $("atrT2ShortVal").textContent = Number($("atrT2Short").value).toFixed(1);
+    $("rsiLongVal").textContent = $("rsiLong").value;
+    $("rsiShortVal").textContent = $("rsiShort").value;
+    updateCli();
+  }
+
+  function updateCli() {
+    const c = readCfg();
+    const parts = [
+      "python -m src.run_screener",
+      `--universe ${c.universe}`,
+      `--min-yield ${c.min_yield}`,
+      `--max-pe ${c.max_pe}`,
+      `--min-pe-short ${c.min_pe_short}`,
+      `--atr-stop ${c.atr_stop}`,
+      `--atr-target1 ${c.atr_target1}`,
+      `--atr-target2 ${c.atr_target2}`,
+      `--atr-stop-short ${c.atr_stop_short}`,
+      `--atr-target1-short ${c.atr_target1_short}`,
+      `--atr-target2-short ${c.atr_target2_short}`,
+      `--rsi-long-max ${c.rsi_long_max}`,
+      `--rsi-short-min ${c.rsi_short_min}`,
+      `--tech-filters ${[...state.techEnabled].join(",") || "none"}`,
+      `--long-trends ${c.long_trends.join(",")}`,
+      `--short-trends ${c.short_trends.join(",")}`,
+      `--top-n ${c.top_n}`,
+      `--min-weight ${c.min_weight}`,
+    ];
+    $("cliBox").textContent = parts.join(" ");
+  }
+
+  function scoreRow(pe, dy, peMedian, cfg) {
+    let longS = 0, shortS = 0;
+    if (dy !== null) {
+      if (dy >= cfg.min_yield) longS += 2 + Math.min(dy / Math.max(cfg.min_yield, 1e-6), 3);
+      else shortS += 1 + (cfg.min_yield - dy) * 10;
+      if (dy < cfg.min_yield * 0.5) shortS += 1;
+    }
+    if (pe !== null) {
+      if (pe <= cfg.max_pe) longS += 2 + Math.max(0, (cfg.max_pe - pe) / Math.max(cfg.max_pe, 1)) * 2;
+      if (pe >= cfg.min_pe_short) shortS += 2 + Math.min((pe - cfg.min_pe_short) / Math.max(cfg.min_pe_short, 1), 2);
+      if (peMedian && peMedian > 0) {
+        if (pe <= peMedian * cfg.pe_vs_median_max) longS += 1.5;
+        if (pe >= peMedian * cfg.pe_vs_median_min_short) shortS += 1.5;
+      }
+    }
+    return [Math.round(longS * 1000) / 1000, Math.round(shortS * 1000) / 1000];
+  }
+
+  function rowNum(row, key) {
+    return num(row[key]);
+  }
+
+  function techVerdict(id, side, row, cfg) {
+    const price = rowNum(row, "price");
+    if (id === "rsi") {
+      const rsi = rowNum(row, "rsi14");
+      if (rsi === null) return null;
+      return side === "long" ? rsi <= cfg.rsi_long_max : rsi >= cfg.rsi_short_min;
+    }
+    if (id === "macd_cross") {
+      const macd = rowNum(row, "macd");
+      const signal = rowNum(row, "macd_signal");
+      if (macd === null || signal === null) return null;
+      return side === "long" ? macd > signal : macd < signal;
+    }
+    if (id === "macd_hist") {
+      const hist = rowNum(row, "macd_hist");
+      const prev = rowNum(row, "macd_hist_prev");
+      if (hist === null) return null;
+      return side === "long"
+        ? hist > 0 && (prev === null || hist > prev)
+        : hist < 0 && (prev === null || hist < prev);
+    }
+    if (id === "kd") {
+      const k = rowNum(row, "k9");
+      const d = rowNum(row, "d9");
+      if (k === null || d === null) return null;
+      return side === "long" ? (k > d && k < 80) : (k < d && k > 20);
+    }
+    if (id === "ma_align_s" || id === "ma_align") {
+      const vals = ["ma5", "ma10", "ma20", "ma30"].map((k) => rowNum(row, k));
+      if (vals.some((v) => v === null)) return null;
+      const stacked = vals[0] > vals[1] && vals[1] > vals[2] && vals[2] > vals[3];
+      const reversed = vals[0] < vals[1] && vals[1] < vals[2] && vals[2] < vals[3];
+      return side === "long" ? stacked : reversed;
+    }
+    if (id === "ma_align_m") {
+      const vals = ["ma10", "ma20", "ma60", "ma90"].map((k) => rowNum(row, k));
+      if (vals.some((v) => v === null)) return null;
+      const stacked = vals[0] > vals[1] && vals[1] > vals[2] && vals[2] > vals[3];
+      const reversed = vals[0] < vals[1] && vals[1] < vals[2] && vals[2] < vals[3];
+      return side === "long" ? stacked : reversed;
+    }
+    if (id === "price_ma") {
+      const ma20 = rowNum(row, "ma20");
+      const ma60 = rowNum(row, "ma60");
+      if (price === null || ma20 === null || ma60 === null) return null;
+      return side === "long" ? (price > ma20 && price > ma60) : (price < ma20 && price < ma60);
+    }
+    if (id === "bias_ma20") {
+      const ma20 = rowNum(row, "ma20");
+      if (price === null || ma20 === null || ma20 === 0) return null;
+      const bias = (price - ma20) / ma20;
+      return side === "long" ? (bias >= -0.03 && bias <= 0.02) : bias >= 0.05;
+    }
+    if (id === "bb_mid") {
+      const mid = rowNum(row, "bb_mid");
+      if (price === null || mid === null) return null;
+      return side === "long" ? price <= mid : price >= mid;
+    }
+    if (id === "volume") {
+      const vol = rowNum(row, "vol_ratio");
+      if (vol === null) return null;
+      return vol >= 1.2;
+    }
+    if (id === "breakout_20") {
+      const high20 = rowNum(row, "high_20");
+      const low20 = rowNum(row, "low_20");
+      if (price === null || high20 === null || low20 === null) return null;
+      return side === "long" ? price >= high20 * 0.995 : price <= low20 * 1.005;
+    }
+    if (id === "atr_calm") {
+      const atr = rowNum(row, "atr14");
+      if (price === null || atr === null || price === 0) return null;
+      return atr / price <= 0.04;
+    }
+    return true;
+  }
+
+  function techStats(side, row, cfg) {
+    let passed = 0, judged = 0;
+    for (const id of state.techEnabled) {
+      const verdict = techVerdict(id, side, row, cfg);
+      if (verdict === null) continue;
+      judged += 1;
+      if (verdict) passed += 1;
+    }
+    return { passed, judged, ok: judged === 0 || passed * 2 >= judged };
+  }
+
+  function techPass(side, row, cfg) {
+    return techStats(side, row, cfg).ok;
+  }
+
+  function labelOf(longScore, shortScore, trend, row, pe, dy, incomplete, cfg) {
+    const longTrendOk = cfg.long_trends.includes(trend);
+    const shortTrendOk = cfg.short_trends.includes(trend);
+    let longFundOk = false, shortFundOk = false;
+    if (!incomplete) {
+      longFundOk = (dy === null || dy >= cfg.min_yield) && (pe === null || pe <= cfg.max_pe);
+      shortFundOk = (pe !== null && pe >= cfg.min_pe_short) || (dy !== null && dy < cfg.min_yield * 0.75);
+    }
+    const longOk = longFundOk && longTrendOk && techPass("long", row, cfg) && longScore >= 2;
+    const shortOk = shortFundOk && shortTrendOk && techPass("short", row, cfg) && shortScore >= 2;
+    if (longOk && shortOk) return longScore >= shortScore ? "long_candidate" : "short_candidate";
+    if (longOk) return "long_candidate";
+    if (shortOk) return "short_candidate";
+    if (longTrendOk || shortTrendOk || incomplete) return "watch";
+    return "skip";
+  }
+
+  function recomputeLevels(row, cfg) {
+    const price = num(row.price) || 0;
+    const atr = num(row.atr14) || 0;
+    const ma20 = num(row.ma20) || price;
+    const trend = row.trend_state;
+    const longEntry = ["StrongUp", "Up"].includes(trend) ? Math.min(price, ma20) : price;
+    const shortEntry = ["Down", "Range"].includes(trend) ? Math.max(price, ma20) : price;
+    return {
+      long_entry: longEntry,
+      long_stop: longEntry - cfg.atr_stop * atr,
+      long_target1: longEntry + cfg.atr_target1 * atr,
+      long_target2: longEntry + cfg.atr_target2 * atr,
+      short_entry: shortEntry,
+      short_stop: shortEntry + cfg.atr_stop_short * atr,
+      short_target1: shortEntry - cfg.atr_target1_short * atr,
+      short_target2: shortEntry - cfg.atr_target2_short * atr,
+    };
+  }
+
+  function inWatch(row) {
+    if (!state.watchOn) return true;
+    return state.watch.has(tickerKey(row.ticker));
+  }
+
+  function inUniverse(row, universe) {
+    if (universe === "all") return true;
+    if (universe === "custom") return !!row.custom || row.etf_membership === "custom";
+    const weights = rowWeights(row);
+    if (universe === "both") return Object.keys(weights).length > 0;
+    return (weights[universe] || 0) > 0;
+  }
+
+  function inCategories(row) {
+    if (!state.catFilter.size) return true;
+    const ids = row.category_ids || [];
+    for (const id of state.catFilter) {
+      if (ids.includes(id)) return true;
+    }
+    return false;
+  }
+
+  function process() {
+    const cfg = readCfg();
+    const filtered = baseRows.filter((r) => {
+      if (!inWatch(r)) return false;
+      if (!state.watchOn && !inUniverse(r, cfg.universe)) return false;
+      if (!inCategories(r)) return false;
+      const w = num(r.weight_max) || 0;
+      if (state.watchOn || cfg.universe === "custom" || r.custom) return true;
+      return w >= cfg.min_weight;
+    });
+    const peVals = filtered.map((r) => num(r.trailing_pe)).filter((x) => x !== null);
+    peVals.sort((a, b) => a - b);
+    const peMedian = peVals.length
+      ? (peVals.length % 2
+          ? peVals[(peVals.length - 1) / 2]
+          : (peVals[peVals.length / 2 - 1] + peVals[peVals.length / 2]) / 2)
+      : null;
+
+    return filtered.map((r) => {
+      const pe = num(r.trailing_pe);
+      const dy = num(r.dividend_yield);
+      const incomplete = !!r.fund_incomplete;
+      const longTech = techStats("long", r, cfg);
+      const shortTech = techStats("short", r, cfg);
+      let [longScore, shortScore] = scoreRow(pe, dy, peMedian, cfg);
+      longScore += longTech.passed;
+      shortScore += shortTech.passed;
+      const label = labelOf(longScore, shortScore, r.trend_state, r, pe, dy, incomplete, cfg);
+      const levels = recomputeLevels(r, cfg);
+      return {
+        ...r,
+        ...levels,
+        long_score: longScore,
+        short_score: shortScore,
+        tech_long_passed: longTech.passed,
+        tech_long_judged: longTech.judged,
+        tech_short_passed: shortTech.passed,
+        tech_short_judged: shortTech.judged,
+        label,
+        pe_median_universe: peMedian,
+      };
+    });
+  }
+
+  function viewRows(rows) {
+    const cfg = readCfg();
+    let list = rows.filter((r) => {
+      if (state.tab === "long") return r.label === "long_candidate";
+      if (state.tab === "short") return r.label === "short_candidate";
+      if (state.tab === "watch") return r.label === "watch";
+      return true;
+    });
+    if (state.q) {
+      const q = state.q.toLowerCase();
+      list = list.filter((r) =>
+        String(r.ticker).includes(q) || String(r.name || "").toLowerCase().includes(q)
+      );
+    }
+    const side = state.tab === "short" ? "short" : "long";
+    list = list.map((r) => ({
+      ...r,
+      score: side === "short" ? r.short_score : r.long_score,
+      tech_passed: side === "short" ? r.tech_short_passed : r.tech_long_passed,
+      tech_judged: side === "short" ? r.tech_short_judged : r.tech_long_judged,
+      entry: side === "short" ? r.short_entry : r.long_entry,
+      stop: side === "short" ? r.short_stop : r.long_stop,
+      target1: side === "short" ? r.short_target1 : r.long_target1,
+    }));
+    list.sort((a, b) => {
+      const ka = a[state.sortKey], kb = b[state.sortKey];
+      const na = typeof ka === "number" ? ka : String(ka || "");
+      const nb = typeof kb === "number" ? kb : String(kb || "");
+      if (na < nb) return state.sortDir === "asc" ? -1 : 1;
+      if (na > nb) return state.sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    if (state.tab !== "all") list = list.slice(0, cfg.top_n);
+    return list;
+  }
+
+  function showConstituents() {
+    document.querySelectorAll("#tabs .tab").forEach((b) => {
+      b.classList.toggle("on", b.dataset.tab === "all");
+    });
+    state.tab = "all";
+    state.sortKey = "weight_max";
+    state.sortDir = "desc";
+    render();
+  }
+
+  function renderEtfChips() {
+    const el = $("etfChips");
+    if (!el) return;
+    const universe = $("universe").value;
+    const items = [{ id: "both", label: "全部成份" }].concat(
+      ETF_ORDER.map((code) => ({ id: code, label: code }))
+    );
+    el.innerHTML = "";
+    items.forEach((item) => {
+      const n = baseRows.filter((r) => {
+        const weights = rowWeights(r);
+        return item.id === "both" ? Object.keys(weights).length > 0 : (weights[item.id] || 0) > 0;
+      }).length;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip-tog" + (universe === item.id ? " on" : "");
+      b.textContent = `${item.label} ${n}`;
+      b.onclick = () => {
+        $("universe").value = item.id;
+        showConstituents();
+      };
+      el.appendChild(b);
+    });
+  }
+
+  function renderWatchChip() {
+    const el = $("watchChips");
+    if (!el) return;
+    el.innerHTML = "";
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip-tog" + (state.watchOn ? " on" : "");
+    b.textContent = `自選股 ${state.watch.size}`;
+    b.onclick = () => {
+      state.watchOn = !state.watchOn;
+      render();
+    };
+    el.appendChild(b);
+  }
+
+  function renderCatChips() {
+    const cats = ((catalog && catalog.categories) || []).filter((c) =>
+      c.id !== "watchlist" && c.name !== "自選" && c.name !== "自選股"
+    );
+    const field = $("catField");
+    const el = $("catChips");
+    if (!cats.length) {
+      field.hidden = true;
+      return;
+    }
+    field.hidden = false;
+    el.innerHTML = "";
+    cats.forEach((c) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip-tog" + (state.catFilter.has(c.id) ? " on" : "");
+      b.textContent = c.name;
+      b.onclick = () => {
+        if (state.catFilter.has(c.id)) state.catFilter.delete(c.id);
+        else state.catFilter.add(c.id);
+        renderCatChips();
+        render();
+      };
+      el.appendChild(b);
+    });
+  }
+
+  function renderTechChips() {
+    const el = $("techOn");
+    const names = new Map((state.techCatalog || []).map((f) => [f.id, f.name]));
+    const ids = [...state.techEnabled];
+    if (!ids.length) {
+      el.innerHTML = `<span class="meta">未勾選技術濾網</span>`;
+      return;
+    }
+    el.innerHTML = ids.map((id) => `<span class="chip-static">${names.get(id) || id}</span>`).join("");
+  }
+
+  function applyTech(pack) {
+    if (!pack) return;
+    state.techEnabled = new Set(pack.enabled || []);
+    state.techCatalog = pack.filters || state.techCatalog;
+    renderTechChips();
+  }
+
+  function renderTrends() {
+    const longEl = $("longTrends");
+    const shortEl = $("shortTrends");
+    longEl.innerHTML = "";
+    shortEl.innerHTML = "";
+    TRENDS.forEach((t) => {
+      const b1 = document.createElement("button");
+      b1.type = "button";
+      b1.className = "chip-tog" + (state.longTrends.has(t) ? " on" : "");
+      b1.textContent = t;
+      b1.onclick = () => {
+        if (state.longTrends.has(t)) state.longTrends.delete(t);
+        else state.longTrends.add(t);
+        if (!state.longTrends.size) state.longTrends.add(t);
+        renderTrends();
+        render();
+      };
+      longEl.appendChild(b1);
+
+      const b2 = document.createElement("button");
+      b2.type = "button";
+      b2.className = "chip-tog" + (state.shortTrends.has(t) ? " on" : "");
+      b2.textContent = t;
+      b2.onclick = () => {
+        if (state.shortTrends.has(t)) state.shortTrends.delete(t);
+        else state.shortTrends.add(t);
+        if (!state.shortTrends.size) state.shortTrends.add(t);
+        renderTrends();
+        render();
+      };
+      shortEl.appendChild(b2);
+    });
+  }
+
+  function render() {
+    const rows = process();
+    const counts = {
+      universe: rows.length,
+      long: rows.filter((r) => r.label === "long_candidate").length,
+      short: rows.filter((r) => r.label === "short_candidate").length,
+      watch: rows.filter((r) => r.label === "watch").length,
+    };
+    $("cUniverse").textContent = counts.universe;
+    $("cLong").textContent = counts.long;
+    $("cShort").textContent = counts.short;
+    $("cWatch").textContent = counts.watch;
+
+    const list = viewRows(rows);
+    const tbody = $("tbody");
+    tbody.innerHTML = "";
+    if (state.watchOn && state.watch.size === 0) {
+      $("empty").textContent = "自選股是空的。勾選左側方框即可加入。";
+    } else if (state.watchOn && !list.length) {
+      $("empty").textContent = "自選股在此分頁沒有符合的標的，可改看「全部」。";
+    } else {
+      $("empty").textContent = "此條件下沒有符合的標的，試著放寬殖利率或 PE。";
+    }
+    $("empty").hidden = list.length > 0;
+    renderEtfChips();
+    renderWatchChip();
+
+    const side = state.tab === "short" ? "short" : "long";
+    list.forEach((r) => {
+      const tr = document.createElement("tr");
+      tr.className = "row" + (state.openTicker === r.ticker ? " open" : "");
+      const badgeClass = r.label === "long_candidate" ? "long"
+        : r.label === "short_candidate" ? "short"
+        : r.label === "watch" ? "watch" : "skip";
+      const watched = state.watch.has(tickerKey(r.ticker));
+      tr.innerHTML = `
+        <td class="check"><input type="checkbox" data-watch="${r.ticker}" aria-label="自選 ${r.ticker}"${watched ? " checked" : ""}/></td>
+        <td><strong>${r.ticker}</strong></td>
+        <td><div class="name-cell"><span>${r.name || "—"}</span><button type="button" class="del-x" data-del="${r.ticker}" aria-label="刪除 ${r.ticker}">×</button></div></td>
+        <td class="num">${fmt(r.price)}</td>
+        <td><span class="trend">${r.trend_state || "—"}</span></td>
+        <td class="num">${fmt(r.trailing_pe)}</td>
+        <td class="num">${fmtPct(r.dividend_yield)}</td>
+        <td class="num">${fmt(r.score)}</td>
+        <td class="num">${fmt(r.entry)}</td>
+        <td class="num">${fmt(r.stop)}</td>
+        <td class="num">${fmt(r.target1)}</td>
+        <td><span class="badge ${badgeClass}">${labelText(r.label)}</span></td>`;
+      const watchBox = tr.querySelector("input[data-watch]");
+      watchBox.addEventListener("click", (e) => e.stopPropagation());
+      watchBox.addEventListener("change", () => {
+        const key = tickerKey(r.ticker);
+        if (watchBox.checked) state.watch.add(key);
+        else state.watch.delete(key);
+        saveWatch();
+        render();
+      });
+      const delBtn = tr.querySelector("[data-del]");
+      delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeStock(r.ticker, r.name);
+      });
+      tr.onclick = (e) => {
+        if (e.target.closest("[data-watch], [data-del]")) return;
+        state.openTicker = state.openTicker === r.ticker ? null : r.ticker;
+        render();
+      };
+      tbody.appendChild(tr);
+
+      const det = document.createElement("tr");
+      det.className = "detail" + (state.openTicker === r.ticker ? " open" : "");
+      const t2 = side === "short" ? r.short_target2 : r.long_target2;
+      det.innerHTML = `<td colspan="12">
+        <div class="detail-grid">
+          <div class="box"><span>進場參考</span><strong>${fmt(r.entry)}</strong></div>
+          <div class="box"><span>停損</span><strong>${fmt(r.stop)}</strong></div>
+          <div class="box"><span>目標1</span><strong>${fmt(r.target1)}</strong></div>
+          <div class="box"><span>目標2</span><strong>${fmt(t2)}</strong></div>
+          <div class="box ma-box"><span>均線</span><div class="ma-lines">
+            <div><em>MA5</em><b>${fmt(r.ma5)}</b></div>
+            <div><em>MA10</em><b>${fmt(r.ma10)}</b></div>
+            <div><em>MA20</em><b>${fmt(r.ma20)}</b></div>
+            <div><em>MA30</em><b>${fmt(r.ma30)}</b></div>
+            <div><em>MA60</em><b>${fmt(r.ma60)}</b></div>
+            <div><em>MA90</em><b>${fmt(r.ma90)}</b></div>
+          </div></div>
+          <div class="box"><span>RSI / ATR</span><strong>${fmt(r.rsi14, 1)} / ${fmt(r.atr14)}</strong></div>
+          <div class="box"><span>MACD / 柱</span><strong>${fmt(r.macd, 3)} / ${fmt(r.macd_hist, 3)}</strong></div>
+          <div class="box"><span>KD</span><strong>${fmt(r.k9, 1)} / ${fmt(r.d9, 1)}</strong></div>
+          <div class="box"><span>量比</span><strong>${fmt(r.vol_ratio, 2)}</strong></div>
+          <div class="box"><span>技術條件</span><strong>${r.tech_passed ?? "—"}／${r.tech_judged ?? "—"}</strong></div>
+          <div class="box"><span>作多／作空分</span><strong>${fmt(r.long_score)} / ${fmt(r.short_score)}</strong></div>
+          <div class="box"><span>權重 max</span><strong>${fmt(r.weight_max, 2)}%</strong></div>
+          <div class="box"><span>權重比例</span><strong>${weightTier(r)} · ${weightShare(r)}</strong></div>
+          <div class="box"><span>分類</span><strong>${(r.category_names && r.category_names.length) ? r.category_names.join("、") : (r.custom ? "自選" : "成份")}</strong></div>
+        </div>
+      </td>`;
+      tbody.appendChild(det);
+    });
+
+    // pulse active step based on filters used
+    document.querySelectorAll(".step").forEach((el, i) => {
+      el.classList.toggle("on", true);
+      el.style.transitionDelay = `${i * 40}ms`;
+    });
+    syncLabels();
+  }
+
+  function applyBaseCfg() {
+    const c = baseCfg;
+    $("universe").value = c.universe || "both";
+    $("minWeight").value = c.min_weight || 0;
+    $("topN").value = c.top_n || 20;
+    $("minYield").value = ((c.min_yield || 0.03) * 100).toFixed(1);
+    $("maxPe").value = c.max_pe || 25;
+    $("minPeShort").value = c.min_pe_short || 35;
+    $("peMedMax").value = c.pe_vs_median_max || 0.9;
+    $("peMedMinShort").value = c.pe_vs_median_min_short || 1.2;
+    $("atrStop").value = c.atr_stop || 1.5;
+    $("atrT1").value = c.atr_target1 || 2.5;
+    $("atrT2").value = c.atr_target2 || 4;
+    $("atrStopShort").value = c.atr_stop_short || 1.2;
+    $("atrT1Short").value = c.atr_target1_short || 2;
+    $("atrT2Short").value = c.atr_target2_short || 3;
+    $("rsiLong").value = c.rsi_long_max || 60;
+    $("rsiShort").value = c.rsi_short_min || 60;
+    state.longTrends = new Set(c.long_trends || ["StrongUp", "Up"]);
+    state.shortTrends = new Set(c.short_trends || ["Down", "Range"]);
+    renderTrends();
+    renderWatchChip();
+    renderCatChips();
+    renderTechChips();
+    syncLabels();
+  }
+
+  // Events
+  ["minWeight","topN","minYield","maxPe","minPeShort","peMedMax","peMedMinShort","atrStop","atrT1","atrT2","atrStopShort","atrT1Short","atrT2Short","rsiLong","rsiShort"]
+    .forEach((id) => {
+      $(id).addEventListener("input", () => { syncLabels(); });
+      $(id).addEventListener("change", () => render());
+    });
+  $("universe").addEventListener("change", showConstituents);
+  $("btnApply").onclick = () => render();
+  $("btnReset").onclick = () => { applyBaseCfg(); render(); };
+  $("btnCopy").onclick = async () => {
+    updateCli();
+    try {
+      await navigator.clipboard.writeText($("cliBox").textContent);
+      $("btnCopy").textContent = "已複製";
+      setTimeout(() => { $("btnCopy").textContent = "複製重跑指令"; }, 1200);
+    } catch (_) {
+      $("btnCopy").textContent = "請手動複製下方指令";
+    }
+  };
+  $("q").addEventListener("input", (e) => { state.q = e.target.value.trim(); render(); });
+  $("stockForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const ticker = $("addTicker").value.trim();
+    if (!ticker) return stockNote("請輸入股票代碼", "bad");
+    const btn = $("btnAddStock");
+    btn.disabled = true;
+    stockNote("新增中，正在抓行情…");
+    try {
+      const res = await fetch("/api/stocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker, fetch: true }),
+      });
+      const data = await res.json();
+      if (!data.ok) return stockNote(data.error || "新增失敗", "bad");
+      location.reload();
+    } catch (_) {
+      stockNote("無法連上伺服器", "bad");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  async function removeStock(ticker, name) {
+    const label = name ? `${ticker} ${name}` : ticker;
+    if (!confirm(`從選股器移除 ${label}？下次更新也不會自動加回。`)) return;
+    stockNote("刪除中…");
+    try {
+      const res = await fetch(`/api/stocks/${encodeURIComponent(ticker)}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.ok) return stockNote(data.error || "刪除失敗", "bad");
+      location.reload();
+    } catch (_) {
+      stockNote("無法連上伺服器", "bad");
+    }
+  }
+  document.querySelectorAll("#tabs .tab").forEach((btn) => {
+    btn.onclick = () => {
+      document.querySelectorAll("#tabs .tab").forEach((b) => b.classList.remove("on"));
+      btn.classList.add("on");
+      state.tab = btn.dataset.tab;
+      state.sortKey = "score";
+      state.sortDir = "desc";
+      render();
+    };
+  });
+  document.querySelectorAll("th[data-sort]").forEach((th) => {
+    th.onclick = () => {
+      const key = th.dataset.sort;
+      if (state.sortKey === key) state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+      else { state.sortKey = key; state.sortDir = key === "ticker" || key === "name" ? "asc" : "desc"; }
+      render();
+    };
+  });
+
+  function stockNote(text, kind) {
+    const el = $("stockMsg");
+    if (!el) return;
+    el.hidden = !text;
+    el.textContent = text || "";
+    el.className = "stock-msg" + (kind ? " " + kind : "");
+  }
+
+  async function reloadLive() {
+    if (!LIVE) return;
+    try {
+      const res = await fetch("/api/screener");
+      const data = await res.json();
+      if (!data.ok || !data.payload) return;
+      const p = data.payload;
+      baseRows = Array.isArray(p.all) ? p.all.map((r) => ({ ...r })) : [];
+      catalog = p.catalog || catalog;
+      Object.assign(baseCfg, p.config || {});
+      applyTech(p.tech_filters);
+      const asOf = (baseRows[0] && baseRows[0].as_of) || (p.generated_at || "").slice(0, 10) || "—";
+      $("asOf").textContent = asOf;
+      if (p.disclaimer) $("disclaimer").textContent = p.disclaimer;
+      renderCatChips();
+      render();
+    } catch (_) { /* keep current snapshot */ }
+  }
+
+  // Boot
+  const asOf = (baseRows[0] && baseRows[0].as_of) || (raw.generated_at || "").slice(0, 10) || "—";
+  $("asOf").textContent = asOf;
+  $("disclaimer").textContent = raw.disclaimer || "研究參考用途，不構成投資建議。";
+  if (LIVE) {
+    $("adminLink").hidden = false;
+    $("adminLink").href = window.__ADMIN__ ? "/admin" : "/admin/login";
+    $("adminLink").textContent = window.__ADMIN__ ? "後台" : "後台登入";
+    $("btnReload").hidden = false;
+    $("btnReload").onclick = async () => {
+      $("btnReload").textContent = "載入中…";
+      await reloadLive();
+      $("btnReload").textContent = "重新載入資料";
+    };
+  }
+  applyBaseCfg();
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+{
+  "categories": [
+    {
+      "id": "watchlist",
+      "name": "自選",
+      "note": "手動新增的觀察標的"
+    },
+    {
+      "id": "cat-d932",
+      "name": "半導體",
+      "note": "測試分類"
+    }
+  ],
+  "stocks": [
+    {
+      "ticker": "1101",
+      "name": "台泥",
+      "category_ids": [
+        "watchlist"
+      ]
+    },
+    {
+      "ticker": "3551",
+      "name": "世禾",
+      "category_ids": []
+    },
+    {
+      "ticker": "2915",
+      "name": "潤泰全",
+      "category_ids": []
+    },
+    {
+      "ticker": "8028",
+      "name": "昇陽半導體",
+      "category_ids": [
+        "watchlist"
+      ]
+    },
+    {
+      "ticker": "5536",
+      "name": "聖暉",
+      "category_ids": [
+        "watchlist"
+      ]
+    },
+    {
+      "ticker": "2404",
+      "name": "漢唐",
+      "category_ids": [
+        "watchlist"
+      ]
+    },
+    {
+      "ticker": "6691",
+      "name": "洋基工程",
+      "category_ids": [
+        "cat-d932"
+      ]
+    },
+    {
+      "ticker": "6613",
+      "name": "朋億",
+      "category_ids": [
+        "cat-d932"
+      ]
+    },
+    {
+      "ticker": "0056",
+      "name": "YUANTA SECURITIES INV TRUST CO",
+      "category_ids": []
+    },
+    {
+      "ticker": "009828",
+      "name": "CTBC INVESTMENTS CO LTD CTBC TA",
+      "category_ids": []
+    },
+    {
+      "ticker": "0052",
+      "name": "FUBON ASSET MANAGEMENT CO LTD F",
+      "category_ids": []
+    }
+  ],
+  "excluded": []
+}

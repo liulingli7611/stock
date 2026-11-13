@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Refresh constituent reference / target / stop prices before the TWSE open.
+set -euo pipefail
+cd "$(dirname "$0")"
+mkdir -p logs
+
+echo "===== $(date '+%Y-%m-%d %H:%M:%S %Z') preopen screener ====="
+if [[ ! -x .venv/bin/python ]]; then
+  echo "Missing .venv. Run ./update once to create it."
+  exit 1
+fi
+
+.venv/bin/python -m src.run_screener
+echo "===== $(date '+%Y-%m-%d %H:%M:%S %Z') done ====="
