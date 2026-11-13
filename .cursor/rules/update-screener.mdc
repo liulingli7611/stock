@@ -1,12 +1,14 @@
 ---
-description: When user says 更新選股, run constituent screener
+description: When user says 更新, refresh constituent stock data
 alwaysApply: true
 ---
 
-# 更新選股
+# 更新個股資料
 
-When the user says **更新選股** (or close variants like「更新選股器」「跑選股」「幫我更新選股」):
+When the user says **更新** (or close variants like「更新個股」「更新個股資料」「更新資料」「幫我更新」「更新選股」「更新選股器」「跑選股」「幫我更新選股」):
 
 1. Immediately run `/Users/lily/Documents/Stock/.venv/bin/python -m src.run_screener` from the Stock project.
 2. Summarize key outputs briefly (long/short counts, report/deck/CSV paths).
 3. Do not edit the plan file or recreate the project unless asked.
+
+This refreshes constituent holdings and each stock's price, PE, yield, and reference levels. If the message names **0050** or **00919**, follow those update rules instead.
